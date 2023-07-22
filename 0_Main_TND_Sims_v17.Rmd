@@ -1,0 +1,5120 @@
+---
+title: "TND Asx"
+author: "Edgar Ortiz Brizuela"
+date: "2023-01-31"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Packages
+
+Install/load the necessary packages for this code.
+
+```{r}
+
+if (!require(pacman)) {
+  install.packages("pacman")}
+
+p_load(ggdag,
+       tidyverse,
+       xtable, 
+       plotly,
+       grid,
+       gridExtra, 
+       ggpubr, 
+       htmlwidgets)
+
+```
+
+
+# *****************************
+# A)        DAGs
+# *****************************
+
+This section is aimed at generating the DAGs described in the manuscript.
+
+## DAG 1: Data generating structure 
+
+```{r}
+
+# 1. Create a DAG object with dagify
+
+Dag1 = 
+  ggdag::dagify(
+    V ~ H + C, 
+    I ~ H + V + C, 
+    S ~ I + V + C, 
+    T ~ S + H + C + V,
+    H ~ C,
+    exposure = "V",
+    outcome = c("I"),
+    coords = list(y = c(V = -5, 
+                        I = 1, 
+                        S = 1, 
+                        T = 1,
+                        H = 6,
+                        C = -4),
+                  x = c(V = 3, 
+                        I = 4, 
+                        S = 5, 
+                        T = 6,
+                        H = 3,
+                        C = 2)
+                  ))
+
+
+# 2. Plot 
+
+DagDataGeneratingStructure =
+Dag1 %>% 
+  ggdag() +
+  theme_dag() +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+    )
+
+
+# 3. Save the plot as a PNG file
+
+ggsave(
+  filename = "Dag1.png",
+  plot = DagDataGeneratingStructure,
+  width = 7,    # width in inches
+  height = 4,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+
+DagDataGeneratingStructure
+
+```
+
+
+## DAG 2. Classical 
+
+```{r}
+
+# 1. Create a DAG for the classical TND
+
+DagClassical <- Dag1 %>%
+  node_dconnected("V", 
+                  c("I","S"), 
+                  controlling_for = c("C", "H", "S", "T")) %>%
+  ggplot(aes(x = x, 
+             y = y, 
+             xend = xend, 
+             yend = yend, 
+             shape = adjusted)) +
+  geom_dag_edges() +
+  geom_dag_node() +
+  geom_dag_text(col = "white") +
+  theme_dag() +
+  #labs(shape = "Adjustment") +
+  scale_shape_manual(values = c(15, 16), 
+                     # labels = c("Adjusted", "Unadjusted"),
+                     guide = F) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+
+
+# 2. Save the plot as a PNG file
+
+ggsave(
+  filename = "DagClassical.png",
+  plot = DagClassical,
+  width = 7,    # width in inches
+  height = 4,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+
+DagClassical
+
+```
+
+
+*Extra:*
+
+Identify open paths (using ggdag functions)
+
+```{r, eval=F}
+
+
+# Identify open paths 
+
+Dag1 %>% 
+  ggdag_paths(from = "V", 
+                  to = "I",
+                  adjust_for = c("C", "H", "S", "T"),
+              shadow = T) +
+  theme_dag()
+
+
+```
+
+
+## DAG 3: Alternative
+
+```{r}
+
+# 1. Create a DAG for the alternative TND 
+
+DagAlternative <- Dag1 %>%
+  node_dconnected("V", c("I"), 
+                  controlling_for = c("C", "T")) %>%
+  ggplot(aes(x = x, 
+             y = y, 
+             xend = xend, 
+             yend = yend, 
+             shape = adjusted)) +
+  geom_dag_edges() +
+  geom_dag_node() +
+  geom_dag_text(col = "white") +
+  theme_dag() +
+  scale_adjusted() +
+  #labs(shape = "Adjustment") +
+  scale_shape_manual(values = c(15, 16),
+                     #labels = c("Adjusted", "Unadjusted"),
+                     guide = F) +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+
+
+# 2. Save the plot as a PNG file
+ggsave(
+  filename = "DagAlternative.png",
+  plot = DagAlternative,
+  width = 7,    # width in inches
+  height = 4,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+
+DagAlternative
+
+```
+
+
+*Extra:* Identify open paths. 
+
+```{r, eval = F}
+
+
+# Identify open paths
+
+Dag1 %>% 
+  ggdag_paths(from = "V", 
+                  to = "I",
+                  adjust_for = c("C", "T"),
+              shadow = T) +
+  theme_dag()
+
+
+```
+
+
+## DAG 4: Misclassification
+
+```{r}
+
+# 1. Create a DAG to represent misclassification in alternative TND studies
+
+MCDag = ggdag::dagify(
+    S ~ V, 
+    Ix ~ S + I, 
+    I  ~ V,
+    exposure = "V",
+    outcome = c("I"),
+    coords = list(y = c(V = 0, 
+                        I = 0, 
+                        Ix = 1, 
+                        S = 2),
+                  x = c(V = 0, 
+                        I = 1.5, 
+                        S = 1.5, 
+                        Ix = 1.5)
+    ))
+
+
+# 2. Plot
+
+DagMC =
+MCDag %>% 
+  ggdag() +
+  theme_dag() +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+  )
+
+
+# 3. Save the plot as a PNG file
+
+ggsave(
+  filename = "DagMC.png",
+  plot = DagMC,
+  width = 4,    # width in inches
+  height = 4,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+
+DagMC
+
+```
+
+
+## DAG 5: T_select
+
+```{r}
+
+# 1. DAG object
+
+Dag_T_select = 
+  ggdag::dagify(
+    V ~ H + C, 
+    I ~ H + V + C, 
+    S ~ I + V + C, 
+    T ~ S + H + C + V,
+    H ~ C,
+    Sel ~ T,
+    exposure = "V",
+    outcome = c("S"),
+    coords = list(y = c(V = -5, 
+                        I = 1, 
+                        S = 1, 
+                        T = 1,
+                        H = 6,
+                        C = -4,
+                        Sel = -5),
+                  x = c(V = 3, 
+                        I = 4, 
+                        S = 5, 
+                        T = 6,
+                        H = 3,
+                        C = 2,
+                        Sel = 6)
+                  ))
+
+
+# 2. Plot 
+
+DAG_T_select =
+Dag_T_select %>% 
+  ggdag() +
+  theme_dag() +
+  theme(
+    panel.background = element_blank(),
+    plot.background = element_blank()
+    )
+
+
+# 3. Save the plot as a PNG file
+
+ggsave(
+  filename = "DAG_T_select.png",
+  plot = DAG_T_select,
+  width = 7,    # width in inches
+  height = 4,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+
+DAG_T_select
+
+```
+
+
+## DAGs merged 
+
+Save the four DAGs in a single plot.
+
+### 4 dags
+
+```{r}
+
+# 1. Modify the plot names
+
+plot1 = DagDataGeneratingStructure
+plot2 = DagClassical
+plot3 = DagAlternative
+plot4 = DagMC
+  
+
+# 2. Combine the plots into one plot 
+
+combined_plot <- 
+  ggpubr::ggarrange(plot1, 
+                    plot2, 
+                    plot3, 
+                    plot4, 
+                    nrow = 2, 
+                    ncol = 2, 
+                    labels = c("(a)", "(b)", "(c)", "(d)"), 
+                    widths = c(1, 1),
+                    heights = c(1, 1))
+
+# Save the combined plot as a JPEG
+
+# 2. Save the plot as a PNG file
+
+ggsave(
+  filename = "Combined_DAGs.png",
+  plot = combined_plot,
+  width = 12,    # width in inches
+  height = 7,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+  
+# Print DAG
+
+combined_plot
+
+  
+```
+
+### 3 dags
+
+```{r}
+
+# 1. Modify the plot names
+
+plot2 = DagClassical
+plot3 = DagAlternative
+plot4 = DagMC
+  
+
+# 2. Combine the plots into one plot 
+
+combined_plot <- 
+  ggpubr::ggarrange(plot2, 
+                    plot3, 
+                    plot4, 
+                    nrow = 1, 
+                    ncol = 3, 
+                    labels = c("(a)", "(b)", "(c)"), 
+                    widths = c(1, 1, 0.6),
+                    heights = c(1, 1, 1))
+
+# Save the combined plot as a JPEG
+
+# 2. Save the plot as a PNG file
+
+ggsave(
+  filename = "Combined_DAGs_3.png",
+  plot = combined_plot,
+  width = 14,    # width in inches
+  height = 3.5,    # height in inches
+  dpi = 300,     # resolution (dots per inch)
+  bg = "transparent"
+)
+  
+# Print DAG
+
+combined_plot
+
+  
+```
+
+
+# *****************************
+# B)    SIMULATION STUDY
+# *****************************
+
+Hereafter, we will conduct the simulation study, which is divided into three sections. In Section 1 (i.e., "SIMS 1"), we carry out the main simulation study and vary each of the parameters individually. In Section 2 (i.e., "SIMS 2"), we vary two or more parameters simultaneously. Finally, in Section 3 (i.e., "SIMS 3"), we assess the potential impact of differential misclassification of outcome status in "alternative" TND studies.
+
+# -----------------------------------------------------------------------------
+# SIMS 1: uncontrolled confounding & collider bias (a) ------------------------
+# -----------------------------------------------------------------------------
+
+## 1)  Seeds file
+
+Here we generate a text file that contains a series of seeds to ensure the replicability of results.
+
+```{r}
+
+# 1. Set a seed to generate the seeds file.
+
+set.seed(123)
+
+# 2. Generate the seeds file
+
+write(sample(1:10000000,
+             size=10000),
+      file="seeds.txt",
+      ncolumns=1)
+
+# 3. Read the seeds file and store its contents in an R object.
+
+seeds<-read.table("seeds.txt",
+                  header=F)$V1
+
+```
+
+
+## 2) "datagen" function
+
+Here we create a function to simulate the DAG depicted in Figure 1. 
+
+*Note*: the "cf" and "mc" switches enable the generation of counterfactual scenarios and the measured infection status as required.
+
+```{r}
+
+# 1) Create a data-generation function:
+
+datagen = function(cf = F, # cf = counterfactual
+                   mc = F, # mc = misclassification
+                   popsize = 1000000, 
+                   seed = 123, 
+                   OR_HV = 1.81, # The parameters that will be varied
+                   OR_HI = 0.9,  
+                   OR_IS = 10,
+                   OR_IVS = 0.52, 
+                   OR_HT = 1.3, 
+                   OR_VT = 0.92, 
+                   OR_ST = 6,
+                   T_Intercept = -38.8,
+                   I2_Intercept = -5.4
+                   ){  
+  
+  set.seed(seed) # Set seed
+  
+  ID = tibble(id = 1:popsize) # Create n=popsize consecutive "IDs" 
+  
+  df = ID %>% # Generate nodes (Start) ----------------------------------------
+    
+  mutate( 
+      
+      C = rnorm(mean = 40, 
+                sd = 4, 
+                n = popsize), 
+      
+      H = rbinom(n=n(), 
+                 size=1,
+                 prob = plogis(-19.4 + 
+                                 log(1.59)*C)),
+      
+      V = rbinom(n=n(), 
+                 size=1, 
+                 prob = plogis(-12.25 + 
+                                 log(1.36)*C + 
+                                 log(OR_HV)*H)),
+      
+      I1 = rbinom(n=n(), 
+                  size=1, 
+                  prob = plogis(-6.7 + 
+                                  log(1.12)*C + 
+                                  log(OR_HI)*H)), 
+      
+      I2 = rbinom(n=n(), 
+                  size=1, 
+                  prob = plogis(I2_Intercept + 
+                                  log(1.12)*C + 
+                                  log(OR_HI)*H + 
+                                  log(0.1)*V + 
+                                  -50*I1)),  
+      
+      S = rbinom(n=n(), 
+                 size = 1, 
+                 prob = plogis(-33.8 + 
+                                 log(1.2)*C + 
+                                 log(1.93)*C*I1 + 
+                                 log(1.93)*C*I2 +  
+                                 log(OR_IS)*I1 + 
+                                 log(OR_IS)*I2 +
+                                 log(OR_IVS)*I2*V + 
+                                 -50*(1 - I1)*(1 - I2))),
+      
+      
+      H0S1 = ifelse(H==0 & S==1, 1,0), # dummy variable for theta 5 coef.
+      H1S1 = ifelse(H==1 & S==1, 1,0), # dummy variable for theta 6 coef.
+      
+      T = rbinom(n=n(), size = 1, 
+                 prob = plogis(T_Intercept + 
+                                 log(2.47)*C +
+                                 log(OR_HT)*H + 
+                                 log(OR_VT)*V + 
+                                 log(OR_ST)*S + 
+                                 -50*H0S1+
+                                 50*H1S1)
+                 )
+    
+    ) # Mutate (End) --------------------------------------------------------
+ 
+    # Counterfactuals (Start) -----------------------------------------------
+  
+    if(cf == T) { # cf stands for counterfactual (this is a "switch")
+      
+      df = df %>% mutate(
+        
+        I21 = rbinom(n=n(), # Had everyone been vaccinated
+                    size=1, 
+                    prob = plogis(I2_Intercept + 
+                                    log(1.12)*C + 
+                                    log(OR_HI)*H + 
+                                    log(0.1)*1 + # We replace V by 1 
+                                    -50*I1)), 
+        
+        I20 = rbinom(n=n(), # Had no one been vaccinated
+                    size=1, 
+                    prob = plogis(I2_Intercept + 
+                                    log(1.12)*C + 
+                                    log(OR_HI)*H + 
+                                    log(0.1)*0 + # We replace V by 0 
+                                    -50*I1)), 
+        
+        
+        S1 = rbinom(n=n(), # Had everyone been vaccinated
+                   size = 1, 
+                   prob = plogis(-33.8 + 
+                                   log(1.2)*C + 
+                                   log(1.93)*C*I1 + 
+                                   log(1.93)*C*I21 +  # Replace I2 by I21
+                                   #log(OR_IS)*I1 + # Not needed 
+                                   log(OR_IS)*I21 + # Replace I2 by I21
+                                   log(OR_IVS)*I21*1 + #  Repl. I2->I21 & V->1
+                                   -50*(1 - I1)*(1 - I21))), #  Replace I2->I21
+
+        S0 = rbinom(n=n(), # Had no one been vaccinated
+                   size = 1, 
+                   prob = plogis(-33.8 + 
+                                   log(1.2)*C + 
+                                   log(1.93)*C*I1 + 
+                                   log(1.93)*C*I20 +  # Replace I2 by I20
+                                   #log(OR_IS)*I1 + # Not needed 
+                                   log(OR_IS)*I20 + # Replace I2 by I20
+                                   log(OR_IVS)*I20*0 + # Repl. I2->I20 and V->0
+                                   -50*(1 - I1)*(1 - I20))) # Replace I2 by I20
+        
+       ) # Mutate end. 
+     
+    } # Counterfactuals (End) -------------------------------------------------
+
+  if(mc == T) { # "mc" stands for misclassification (this is a "switch")
+
+    df = df %>% 
+      mutate( # Mutate start
+        
+        I2_star = 
+          ifelse(S==1 & I2==1, 
+                 rbinom(n = n(), 
+                        size = 1, 
+                        prob = 0.971), # Sens in S=1
+                 ifelse(S==0 & I2==1, 
+                        rbinom(n = n(), 
+                               size = 1, 
+                               prob = 0.581), # Sens in S=0 
+                        rbinom(n=n(), 
+                               size = 1, 
+                               prob = (1-0.989)))) # Spec. complement for all 
+        
+            ) # Mutate end
+    
+  } # "mc" (End)
+    
+  return(df)
+  
+}
+
+
+```
+
+
+## 3) True value for Target Parameters
+
+To obtain the target parameters, we simulate two counterfactual scenarios: one where everyone is vaccinated, and another where no one is vaccinated. We perform these simulations on a very large synthetic population (i.e., n = 100,000,000).
+
+Note: In our simulation, since there is no effect measure modification by C, the conditional RR for either symptomatic infection or infection simplifies to the marginal RR for symptomatic infection and infection, respectively. Empirical proof of this is provided in step 5-i below.
+
+```{r}
+
+A=Sys.time() # to measure elapsed time
+
+# 1. Generate the counterfactual data and save it as "counterfactual"
+
+counterfactual = datagen(cf = T, 
+                         popsize = 100000000, # 100,000,000
+                         seed = 123)
+
+
+# 2. Gen. a variable that stands for S:I had everyone been vaccinated (Y1)
+
+counterfactual$Y1 = counterfactual$S1*counterfactual$I21
+    
+# 3. Gen. a variable that stands for S:I had no one been vaccinated (Y0)
+
+counterfactual$Y0 = counterfactual$S0*counterfactual$I20
+
+# 4. Get the marginal causal RR vs infection (for the alternative TND)     
+
+(Cf_Marginal_RR_Vs_I = 
+    mean(counterfactual$I21)/
+    mean(counterfactual$I20)) 
+
+# 5. # 4. Get the marginal causal RR vs symptomatic infection (classical TND)    
+
+(Cf_Marginal_RR_Vs_SI = 
+    mean(counterfactual$Y1)/
+    mean(counterfactual$Y0))
+
+# 6. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+## 4) Sim. scenario wo/MC and w/best guesses
+
+
+### a. For loop
+
+Here, we use the function created above to conduct 1000 Monte Carlo simulations, followed by estimation of bias using the true RR estimates.
+
+
+```{r}
+
+#------------------------------------------------------------------------------
+#------------------ GET EVERYTHING READY FOR THE FOR LOOP  --------------------
+#------------------------------------------------------------------------------
+
+# 1) Save starting time
+
+(A=Sys.time()) 
+
+# 2) Define the number of simsulations and create an empty df to store results
+
+## Number of simulations
+nsims = 1000 
+
+## Empty df
+results = data.frame(matrix(ncol = 5, 
+                            nrow = nsims))
+
+colnames(results) = c("iteration", 
+                      "VE_Classical", 
+                      "SE_Classical",
+                      "VE_Alternative",
+                      "SE_Alternative")
+
+# 3) Set popsize for each simulation 
+popsize = 1000000 # 1,000,000
+
+
+#------------------------------------------------------------------------------
+#--------------------------- START SIMULATIONS  -------------------------------
+#------------------------------------------------------------------------------
+
+  for (i in 1:nsims){ 
+  
+  # a. Simulate i-th data-frame -----------------------------------------------
+    
+  df = datagen(cf = F, 
+               popsize = popsize,
+               seed = seeds[i])
+  
+  # b. Select the "classical" & "alternative" populations from the i-th df ----
+  
+  df_classical = df %>% # classical: symptomatic & tested individuals 
+    filter(T==1 &  S==1)
+  
+  df_alternative = df %>% 
+    filter(T==1)  # alternative: all tested individuals
+         
+  
+  # c. Get log(OR)s estimates and their SEs -----------------------------------
+  
+  ## Classical TND
+  
+  fit.classical<-glm(I2~V+C,
+                       family = binomial, 
+                       data = df_classical) 
+  
+  results.classical = summary(fit.classical)
+  
+  ## Alternative TND
+  
+  fit.alternative<-glm(I2~V+C,
+                         family = binomial, 
+                         data = df_alternative)
+  
+  results.alternative = summary(fit.alternative)
+
+
+  # d. Save results -----------------------------------------------------------
+  
+  ## Iteration number
+  results[i,1] = i
+  ## VE against S:I (log[OR])
+  results[i,2] = results.classical$coefficients[2]
+  ## SE of VE against S:I 
+  results[i,3] = results.classical$coefficients[5]
+  ## VE against I (log[OR])
+  results[i,4] = results.alternative$coefficients[2]
+  ## SE of VE against I 
+  results[i,5] = results.alternative$coefficients[5]
+
+  }
+
+
+# Measure the elapsed time 
+
+(B=Sys.time()); B-A 
+
+
+# Store results
+
+main.results.original = results
+
+```
+
+
+
+### b. Analyze results
+
+We will now analyze the results of the main simulation.
+
+
+```{r}
+
+
+# 1) Classical TND  -----------------------------------------------------------
+
+## RR vs SI
+
+round(Cf_Marginal_RR_Vs_SI, 3) 
+
+## mean OR vs SI
+measured.conditional.OR.SI = 
+  mean(main.results.original$VE_Classical, na.rm = T) 
+round(exp(measured.conditional.OR.SI), 3) 
+
+## Avg SE Classical
+
+Main_Results.Avg_SE_Classical = 
+  sqrt(mean(main.results.original$SE_Classical^2, na.rm = T)) 
+round(Main_Results.Avg_SE_Classical, 3) 
+
+## MC SE Classical
+
+Main_Results.MCSE_Classical = 
+  sd(main.results.original$VE_Classical, na.rm = T)
+round(Main_Results.MCSE_Classical,3)
+
+## Bias of the OR vs SI
+
+round(
+  exp(measured.conditional.OR.SI) - # i.e., exp(mean(betas))
+  Cf_Marginal_RR_Vs_SI, 3) # i.e., ((marginalRR))
+
+
+
+# 2) Alternative TND  ---------------------------------------------------------
+
+## RR vs I
+
+round(Cf_Marginal_RR_Vs_I, 3) 
+
+## mean OR vs I
+
+measured.conditional.OR.I =  
+  mean(main.results.original$VE_Alternative, na.rm = T) 
+round(exp(measured.conditional.OR.I), 3) 
+
+## Avg SE Alternative
+
+Main_Results.Avg_SE_Alternative = 
+  sqrt(mean(main.results.original$SE_Alternative^2, na.rm = T))
+round(Main_Results.Avg_SE_Alternative, 3) 
+
+## MC SE Alternative
+
+Main_Results.MCSE_Alternative = 
+  sd(main.results.original$VE_Alternative, na.rm = T)
+round(Main_Results.MCSE_Alternative, 3)
+
+## Bias of the OR vs I
+
+round(
+  exp(measured.conditional.OR.I) - # i.e., exp(mean(betas))
+  Cf_Marginal_RR_Vs_I, 3) # i.e., ((marginalRR))
+
+
+```
+
+
+## 5) Vary parameters 
+
+### a. "vary_parameters" function 
+
+To assess the robustness of our conclusions, we will vary the selected parameters. We have developed a function that follows a four-step process:
+
+1) Create a data frame to store the results of all the preceding steps (i.e., steps 1-4 above) but with the altered parameter (e.g., OR HV = x).
+
+2) Create an empty list to store the results for each varied value of the "x" parameter (e.g., OR HV).
+
+3-4) Execute a for loop for each chosen parameter and save the results in a list.
+
+Thus, the final output is a list containing 'n' data frames (with 'n' equal to the number of chosen values for each varied parameter) with the log(OR) and its SE estimates. Moreover, in each data frame, each row corresponds to a simulated dataframe with a different seed, but with the same value for the varied parameter for that dataframe.
+
+
+```{r}
+
+#----------------------------------------------------------------------------
+#------------------------  vary_parameters FUNCTION  ------------------------
+#----------------------------------------------------------------------------
+
+vary_parameters <- function(parametros = NULL, # Vector w/params. to be varied
+                            nsims = 1000, # number of simulations per parameter
+                            popsize = 1000000, # population size
+                            seeds = NULL, # df with seeds
+                            argument = NULL # parameter to vary e.g., "OR_HV =" 
+                            ){ # FUNCTION START
+
+
+  # 1) Create an empty df to store VE results ---------------------------------
+  
+  results = data.frame(matrix(ncol = 6, nrow = nsims)) # empty df
+  colnames(results) = c("iteration", # column names 
+                        "VE_Classical", 
+                        "SE_Classical",
+                        "VE_Alternative",
+                        "SE_Alternative",
+                        "Formula") # to save the param. changed as quality ctrl
+  
+  # 2) Create an empty list to store results for each iteration ---------------
+  
+  lista = list()  
+  
+  # 3) For loop 1: Iterate over j-th parameters in parametros set -------------
+  
+  for (j in 1:length(parametros)){ # Start of "loop 1" 
+  
+  ## 3a) Pick the j-th parameter from the parametros set, then, paste the ...
+  ### picked value to its argument (the parameter changed, e.g., "OR_HV"), ...
+  ### finally transform it into R object to be used as argument within datagen:
+    
+  parametro = parametros[j]
+  formula = paste(argument, parametro)
+
+  ## 3b) Get VE and SE from n (n=nsims) simulations using the picked parameter:
+  
+  for (i in 1:nsims){ # Start of "loop 2". 
+  
+  ### i. generate data
+  df = 
+    eval(
+      parse(
+        text = paste(
+          "datagen(cf=F, popsize=popsize, seed = seeds[i],", 
+          formula, 
+          ")" )))
+
+  ### ii. select study populations for both designs 
+  
+  df_classical = df %>% filter(T==1 & S==1)
+  df_alternative = df %>% filter(T==1)  
+         
+  
+  ### iii. get VE estimates and their SEs
+  
+  #### Classical TND
+  
+  fit.classical<-glm(I2~V+C,
+                       family = binomial, 
+                       data = df_classical) 
+  results.classical = summary(fit.classical)
+  
+  #### Alternative TND
+  
+  fit.alternative<-glm(I2~V+C,
+                         family = binomial, 
+                         data = df_alternative)
+  results.alternative = summary(fit.alternative)
+
+
+  ### iv. Save results
+  
+  #### Iteration number
+  results[i,1] = i
+  #### VE against S:I (log OR)
+  results[i,2] = results.classical$coefficients[2]
+  #### SE of VE against S:I 
+  results[i,3] = results.classical$coefficients[5]
+  #### VE against I  (log OR)
+  results[i,4] = results.alternative$coefficients[2]
+  #### SE of VE against I 
+  results[i,5] = results.alternative$coefficients[5]
+  #### Parameter
+  results[i,6] = formula 
+
+    } # End of "loop 2" 
+
+  ### v. Store df of results in a list
+  
+  lista[[j]] = results
+
+    
+  } # End of "loop 1" ---------------------------------------------------------
+
+  
+  # 4) Return results ---------------------------------------------------------
+  
+    return(lista)
+  
+} # FUNCTION END
+
+
+
+```
+
+
+### b. "get_cfs" function
+
+This function computes the counterfactual VE, incorporating the new parameters, in this case using 10,000,000 instead of 100,000,000 due to computational constraints, and stores it in a new list. This is primarily because changing the original parameters also changes the "true" VE.
+
+```{r}
+
+
+#----------------------------------------------------------------------------
+#------------------------  get_cfs FUNCTION  --------------------------------
+#----------------------------------------------------------------------------
+
+get_cfs <- function(parametros = NULL, # Vector w/parameters to be varied
+                    popsize = 10000000, # population size
+                    argument = NULL # e.g., "OR_HV =", parameter to vary 
+                    ) { # FUNCTION START
+
+  
+  # 1. Create empty list to store the new true VE for each parameter
+  
+  lista = list() 
+  
+  # 2. Use a for loop to iterate over n values of the chosen parameter
+  
+  for(i in 1:length(parametros)){
+
+  parametro = parametros[i]
+  formula = paste(argument, parametro)
+  
+  df.sec = 
+    eval(
+      parse(
+        text = paste(
+          "datagen(cf=T, popsize=popsize,", formula, ")")))
+  
+   
+  df.sec$Y1 = df.sec$S1*df.sec$I21 # Y^a=1
+  df.sec$Y0 = df.sec$S0*df.sec$I20 # Y^a=0
+
+  
+  # Get the true VE vs symptomatic infection    
+  Cf_Marginal_RR_Vs_SI.Sec = mean(df.sec$Y1)/mean(df.sec$Y0)
+
+  # Get the true VE vs infection    
+  Cf_Marginal_RR_Vs_I.Sec = mean(df.sec$I21)/mean(df.sec$I20)
+  
+  
+  lista[[i]] = c(Cf_Marginal_RR_Vs_SI.Sec, 
+                 Cf_Marginal_RR_Vs_I.Sec)
+  
+} 
+
+  return(lista)
+  
+}
+
+```
+
+
+
+### c. Sims. w/varied params. wo/MC
+
+The process of iterating over the parameter sets involves two steps:
+
+1) The function created above is run once for each parameter that is to be varied, in order to obtain the measured VE for each iteration. Results are stored in a list of data frames (hereafter, *list one*). 
+
+2) Using a for loop, the counterfactual VE is computed again—this time using 10,000,000 instead of 100,000,000 due to computational constraints—and stored in a new list (hereafter, *list two*). This is primarily for the parameters early in the simulation since this changes the true VE.
+
+
+#### i. OR HV
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over OR_HV ------------------------------------- # <----------- Update
+
+parametros.OR_HV = c(seq(from = 1.5, to = 10.5, by = 1)) # <----------- Update
+parametros = parametros.OR_HV # <--------------------------------------- Update
+argument = "OR_HV =" # <------------------------------------------------ Update
+
+lista_resultados.OR_HV = # <--------------------------------------- Update
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_HV -------------------------------------- <----------- Update
+
+lista_Cf.OR_HV =  # <--------------------------------------------------- Update
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+```
+
+
+Extra: The following 'for loop' demonstrates that in our simulation, the marginal RR simplifies to the conditional RR, even when varying the parameters. This is also explained in the following reference:
+
+DOI: 10.1177/0962280213502146
+
+
+```{r, eval = F}
+
+A=Sys.time()
+
+# 1. Create an empty list to store the new true VE for each parameter
+lista = list() 
+
+# 2. Select the values for the target parameter to test
+parametros = parametros.I2_Intercept_v2 
+
+# 3. Run a for loop but change manually the parameter below   
+for(i in 1:length(parametros)){
+    
+    parametro = parametros[[i]]
+    
+    df.sec = datagen(cf=T, 
+                     popsize = 10000000,
+                     I2_Intercept = parametro) # <-- 3.1 Change manually the param.
+    
+    df.sec$Y1 = df.sec$S1*df.sec$I21 # Y^a=1
+    df.sec$Y0 = df.sec$S0*df.sec$I20 # Y^a=0
+    
+    ## 3.2 Create a new data frame 'ds.c' containing the counterfactual pops.
+    ds.c = data.frame(Y = c(df.sec$Y1, df.sec$Y0), # stacked cf outcomes
+                  A = rep(c(1,0), each = 10000000), # stacked cf exposures
+                  C = c(df.sec$C, df.sec$C), # stacked cf levels of C
+                  H = c(df.sec$H, df.sec$H), # stacked cf levels of H
+                  I = c(df.sec$I21, df.sec$I20)) # stacked cf levels of I2 
+
+    ## 3.3 Get the true conditional VE vs symptomatic infection    
+    mod1 = glm(Y ~ A + C + H, family = poisson(link = "log"), data = ds.c)
+    
+    ## 3.4 Get the true conditional VE vs infection    
+    mod1b = glm(I ~ A + C + H, family = poisson(link = "log"), data = ds.c)
+    
+    ## 3.5 Store the results
+    ### Counterfactual conditional RR vs SI
+    (Cf_Marginal_RR_Vs_SI.Sec = exp(coef(mod1)[2])) 
+    
+    ### Counterfactual conditional RR vs I
+    (Cf_Marginal_RR_Vs_I.Sec = exp(coef(mod1b)[2])) 
+
+    ### Save a list 
+    lista[[i]] = c(Cf_Marginal_RR_Vs_SI.Sec, 
+                   Cf_Marginal_RR_Vs_I.Sec)
+    
+} 
+
+lista.Cf.prueba = lista 
+
+B=Sys.time(); (B-A) 
+
+# Compare the results
+
+list1=lista.Cf.prueba
+list2=rev(lista_Cf.I2_Intercept) # <----------------------------------- Update
+
+
+result <- Map(function(x, y) round(x - y, 6), list1, list2)
+print(result)
+
+
+
+```
+
+
+#### ii. OR HI
+
+```{r}
+
+# 1. Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+# 2. Run functions
+
+## ---------- Step 1 - iterate over OR_HI -------------------------------------
+
+parametros.OR_HI = c(seq(from = 0.05, to = 0.95, by = 0.1)) 
+parametros = parametros.OR_HI 
+argument = "OR_HI =" 
+
+lista_resultados.OR_HI = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_HI -------------------------------------- 
+
+lista_Cf.OR_HI =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+```
+
+
+#### iii. OR IS
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over OR_IS ------------------------------------- 
+
+parametros.OR_IS = c(seq(from = 1.5, to = 10.5, by = 1)) 
+parametros = parametros.OR_IS 
+argument = "OR_IS =" 
+
+lista_resultados.OR_IS = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_IS -------------------------------------- 
+
+lista_Cf.OR_IS =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+```
+
+
+#### iv. OR IVS
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over OR_IVS ------------------------------------- 
+
+parametros.OR_IVS = c(seq(from = 0.05, to = 0.95, by = 0.1)) 
+parametros = parametros.OR_IVS
+argument = "OR_IVS =" 
+
+lista_resultados.OR_IVS = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_IVS -------------------------------------- 
+
+lista_Cf.OR_IVS =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+```
+
+
+#### v. OR VT
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over OR_VT ------------------------------------- 
+
+parametros.OR_VT = c(seq(from = 0.05, to = 0.95, by = 0.1)) 
+parametros = parametros.OR_VT 
+argument = "OR_VT =" 
+
+lista_resultados.OR_VT = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_VT -------------------------------------- 
+
+lista_Cf.OR_VT =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+```
+
+
+#### vi. OR HT
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over OR_HT ------------------------------------- 
+
+parametros.OR_HT = c(seq(from = 1.5, to = 10.5, by = 1)) 
+parametros = parametros.OR_HT 
+argument = "OR_HT =" 
+
+lista_resultados.OR_HT = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_HT -------------------------------------- 
+
+lista_Cf.OR_HT =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+```
+
+
+#### vii. OR ST
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over OR_ST ------------------------------------- 
+
+parametros.OR_ST = c(seq(from = 1.5, to = 10.5, by = 1)) 
+parametros = parametros.OR_ST 
+argument = "OR_ST =" 
+
+lista_resultados.OR_ST = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for OR_ST --------------------------------------
+
+lista_Cf.OR_ST =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+```
+
+
+#### viii. T_Intercept (i.e., T prevalence)
+
+###### i. Vary the T intercept and measure T prevalence 
+
+We selected a baseline prevalence for testing of ~0.28. Therefore, the adjustments for the T-intercept were designed to cover shifts in the prevalence of T of 0.05 in both directions. To identify the necessary values for the T-intercept, we employed a 'for' loop, iterating over several T-intercept values and calculating the corresponding prevalence of T.
+
+```{r, eval = F}
+
+# 1. Select the params. that will be iterated over to find the desired prev.
+parametros.T_Intercept.provisional = 
+  c(seq(from = -44.5, to = -32.5, by = 0.1)) 
+
+# 2. Create an empty df to store the prevalences
+prevalencias.T =  matrix(nrow = length(parametros.T_Intercept.provisional),
+                         ncol = 2) 
+colnames(prevalencias.T) = c("Prevalence_T",
+                             "Parameter_T")
+
+# 3. Use a for loop to get an approx. for the expectation of the prevalence
+for (i in 1:length(parametros.T_Intercept.provisional)){
+
+  ## a. select the i th value for the parameter
+  parametro = parametros.T_Intercept.provisional[i]    
+
+  ## b. generate data using this parameter
+  datos = datagen(popsize = 1000000, 
+                T_Intercept = parametro)  
+  
+  ## c. store the prevalence of T in a temporary object
+  prevalencia = mean(datos$T)
+
+  ## d. store the computed prevalence into the vector
+  prevalencias.T[i,1] = prevalencia
+  prevalencias.T[i,2] = parametro
+
+}
+
+prevalencias.T 
+
+```
+
+
+###### ii. Confirm T prevalences for the selected T intercepts 
+
+Next, after manually selecting the values for the T intercepts, we confirmed that they approximately corresponded to the desired prevalences in larger populations.
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+
+# 1. Select the params. that will be iterated over to find the desired prev.
+parametros.T_Intercept.provisional = 
+  c(-39.25, -38.4, -37.7, -37.0, -36.35, 
+    -35.7, -35.1, -34.4, -33.8, -33.0) 
+
+# 2. Create an empty df to store the prevalences
+prevalencias.T =  matrix(nrow = length(parametros.T_Intercept.provisional),
+                         ncol = 2) 
+colnames(prevalencias.T) = c("Prevalence_T",
+                             "Parameter_T")
+
+# 3. Use a for loop to get an approximation for the expectation of the prev.
+for (i in 1:length(parametros.T_Intercept.provisional)){
+
+  ## a. select the i th value for the parameter
+  parametro = parametros.T_Intercept.provisional[i]    
+
+  ## b. generate data using this parameter
+  datos = datagen(popsize = 10000000, 
+                T_Intercept = parametro)  
+  
+  ## c. store the prevalence of T in a temporary object
+  prevalencia = mean(datos$T)
+
+  ## d. store the computed prevalence into the vector
+  prevalencias.T[i,1] = prevalencia
+  prevalencias.T[i,2] = parametro
+
+}
+
+prevalencias.T 
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+###### iii. Run Sims for T intercept
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over T_Intercept -------------------------------
+
+parametros.T_Intercept = prevalencias.T[,2] # selected params.
+parametros = parametros.T_Intercept 
+argument = "T_Intercept =" 
+
+lista_resultados.T_Intercept = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for T_Intercept --------------------------------
+
+lista_Cf.T_Intercept =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+```
+
+
+#### ix. I2_Intercept (i.e., Infection prevalence)
+
+
+###### i. Vary the I2 intercept and measure I2 prevalence 
+
+We selected a baseline prevalence for I2 of ~0.12. Therefore, the adjustments for the T-intercept were designed to cover shifts in the prevalence of T of 0.05 in both directions. To identify the necessary values for the I2-intercept, we employed a 'for' loop, iterating over several I2-intercept values and calculating the corresponding prevalence of I2.
+
+```{r, eval = F}
+
+# 1. Select the params. that will be iterated over to find the desired prev.
+parametros.I2_Intercept.provisional = 
+  c(seq(from = -7.4, to = -2.9, by = 0.1)) 
+
+# 2. Create an empty df to store the prevalences
+prevalencias.I2 =  matrix(nrow = length(parametros.I2_Intercept.provisional),
+                         ncol = 2) 
+colnames(prevalencias.I2) = c("Prevalence_I2",
+                             "Parameter_I2")
+
+# 3. Use a for loop to get an approximation for the expectation of the prev.
+for (i in 1:length(parametros.I2_Intercept.provisional)){
+
+  ## a. select the i th value for the parameter
+  parametro = parametros.I2_Intercept.provisional[i]    
+
+  ## b. generate data using this parameter
+  datos = datagen(popsize = 1000000, 
+                I2_Intercept = parametro)  
+  
+  ## c. store the prevalence of T in a temporary object
+  prevalencia = mean(datos$I2)
+
+  ## d. store the computed prevalence into the vector
+  prevalencias.I2[i,1] = prevalencia
+  prevalencias.I2[i,2] = parametro
+
+}
+
+prevalencias.I2 
+
+```
+
+
+###### ii. Confirm I2 prevalences for the selected I2 intercepts 
+
+Next, after manually selecting the values for the T intercepts, we confirmed that they approximately corresponded to the desired prevalences in larger populations.
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+# 1. Select the parameters that will be iterated over to find the desired prev.
+parametros.I2_Intercept.provisional = 
+  c(-6.5, -5.7, -5.15, -4.75, -4.4, 
+    -4.1, -3.8, -3.5, -3.2, -2.9) 
+
+# 2. Create an empty df to store the prevalences
+prevalencias.I2 =  matrix(nrow = length(parametros.I2_Intercept.provisional),
+                         ncol = 2) 
+colnames(prevalencias.I2) = c("Prevalence_I2",
+                             "Parameter_I2")
+
+# 3. Use a for loop to get an approximation for the expectation of the prev.
+for (i in 1:length(parametros.I2_Intercept.provisional)){
+
+  ## a. select the i th value for the parameter
+  parametro = parametros.I2_Intercept.provisional[i]    
+
+  ## b. generate data using this parameter
+  datos = datagen(popsize = 10000000, 
+                I2_Intercept = parametro)  
+  
+  ## c. store the prevalence of T in a temporary object
+  prevalencia = mean(datos$I2)
+
+  ## d. store the computed prevalence into the vector
+  prevalencias.I2[i,1] = prevalencia
+  prevalencias.I2[i,2] = parametro
+
+}
+
+prevalencias.I2 
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+###### iii. Run Sims for I2 intercept
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over I2_Intercept ------------------------------
+
+parametros.I2_Intercept = prevalencias.I2[,2] # selected params.
+parametros = parametros.I2_Intercept 
+argument = "I2_Intercept =" 
+
+lista_resultados.I2_Intercept = 
+  vary_parameters(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+## ----------- Step 2 - get Cf for I2_Intercept -------------------------------
+
+lista_Cf.I2_Intercept =  
+  get_cfs(parametros = parametros, 
+          popsize = 10000000, 
+          argument = argument)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### c. Bias functions
+
+In this section, our goal is to create a plot using the two lists generated earlier:
+
+*List one*: This list contains the data frames with the results of the 1000 Monte Carlo simulations with the new parameters.
+
+*List two*: This list comprises the counterfactuals for each new parameter.
+
+To accomplish this, we first create three functions that estimate bias (i.e., in the scales of VE, OR, and log[OR]). Each function subtracts the respective counterfactual of the i-th element from the second list from the VE estimates in each data set within the first list.
+
+Then, in part d, we create a function to generate the plots, which uses the functions that estimate bias:
+
+#### i. "compute_bias_VE" function (bias of VE in percentage points)
+
+This function, along with the next two, will be nested in the "generate_bias_plot" function (see part 5d).
+
+
+```{r}
+
+
+# Compute the mean of VE estimates in "List 1" and subtract its Cf from "List 2"
+
+compute_bias_VE <- function(df = NULL, # each df within "List 1"
+                         vec = NULL) { # each vector within "List 2"
+  
+  
+  # 1. Create a df to store results ------------------------------------------
+  
+  df_bias = 
+    as.data.frame(
+      matrix(nrow = 1, ncol = 2))
+  
+  colnames(df_bias) = # add column names
+    c("Bias Classical", "Bias Alternative")
+  
+  # 2. Get mean VE -----------------------------------------------------------
+  
+  ## Estimate mean of VE estimates in "classical" samples (log OR)
+  mean_VE_classical <- mean(df$VE_Classical, 
+                            na.rm = TRUE)
+  
+  ## Estimate mean of VE estimates in "alternative" samples (log OR)
+  mean_VE_alternative <- mean(df$VE_Alternative, 
+                              na.rm = TRUE)
+    
+  
+  # 3. Get bias --------------------------------------------------------------
+  
+  ## Estimate Bias
+  
+  df_bias[1,1] <- # Bias in VE scale (Classical)
+    ((1-exp(mean_VE_classical))*100) - # measured VE classical
+    ((1-vec[1])*100) # counterfactual VE classical
+  
+  df_bias[1,2] <- # Bias in VE scale (Alternative)
+    ((1-exp(mean_VE_alternative))*100) - # measured VE alternative
+    ((1-vec[2])*100) # counterfactual VE alternative
+  
+  ## Return df with results 
+  
+  return(df_bias)
+  
+}
+
+
+```
+
+
+
+#### ii. "compute_bias_logOR" function (bias of log OR)
+
+Same as above, but for the log(OR).
+
+```{r}
+
+
+# Compute the mean of VE estimates in "List 1" and subtract its Cf from "List 2"
+
+compute_bias_logOR <- function(df = NULL, # each df within "List 1"
+                         vec = NULL) { # each vector within "List 2"
+  
+  
+  # 1. Create a df to store results ------------------------------------------
+  
+  df_bias = 
+    as.data.frame(
+      matrix(nrow = 1, ncol = 2))
+  
+  colnames(df_bias) = # add column names
+    c("Bias Classical", "Bias Alternative")
+  
+  # 2. Get mean VE -----------------------------------------------------------
+  
+  ## Estimate mean of VE estimates in "classical" samples
+  mean_VE_classical <- mean(df$VE_Classical, 
+                            na.rm = TRUE)
+  
+  ## Estimate mean of VE estimates in "alternative" samples
+  mean_VE_alternative <- mean(df$VE_Alternative, 
+                              na.rm = TRUE)
+    
+  
+  # 3. Get bias --------------------------------------------------------------
+  
+  ## Estimate Bias
+  
+  df_bias[1,1] <- # Bias in log OR scale (Classical)
+    mean_VE_classical - # measured logOR classical
+    log(vec[1]) # counterfactual logRR classical
+  
+  df_bias[1,2] <- # Bias in log OR scale (Alternative)
+    mean_VE_alternative - # measured logOR alternative
+    log(vec[2]) # counterfactual logRR alternative
+  
+  ## Return df with results 
+  
+  return(df_bias)
+  
+}
+
+
+```
+
+
+
+#### iii. "compute_bias_OR" function (bias of  OR)
+
+Same as above, but for the OR.
+
+```{r}
+
+
+# Compute the mean of VE estimates in "List 1" and subtract its Cf from "List 2"
+
+compute_bias_OR <- function(df = NULL, # each df within "List 1"
+                         vec = NULL) { # each vector within "List 2"
+  
+  
+  # 1. Create a df to store results ------------------------------------------
+  
+  df_bias = 
+    as.data.frame(
+      matrix(nrow = 1, ncol = 2))
+  
+  colnames(df_bias) = # add column names
+    c("Bias Classical", "Bias Alternative")
+  
+  # 2. Get mean VE -----------------------------------------------------------
+  
+  ## Estimate mean of VE estimates in "classical" samples
+  mean_VE_classical <- mean(df$VE_Classical, 
+                            na.rm = TRUE)
+  
+  ## Estimate mean of VE estimates in "alternative" samples
+  mean_VE_alternative <- mean(df$VE_Alternative, 
+                              na.rm = TRUE)
+    
+  
+  # 3. Get bias --------------------------------------------------------------
+  
+  ## Estimate Bias
+  
+  df_bias[1,1] <- # Bias in  OR scale (Classical)
+    exp(mean_VE_classical) - # measured OR classical
+    (vec[1]) # counterfactual RR classical
+  
+  df_bias[1,2] <- # Bias in  OR scale (Alternative)
+    exp(mean_VE_alternative) - # measured OR alternative
+    (vec[2]) # counterfactual RR alternative
+  
+  ## Return df with results 
+  
+  return(df_bias)
+  
+}
+
+
+```
+
+
+
+### d. "generate_bias_plot" function 
+
+
+Now we create the function to generate bias plots. 
+
+
+```{r}
+
+
+generate_bias_plot <- function(list_of_dfs = NULL, # "List 1" (dfs w/results)
+                               list_of_vectors = NULL, # "List 2" (vectors w/Cfs)
+                               compute_bias_function = NULL, # bias function  
+                               parametros = NULL, # Vector w/the varied params.
+                               title = NULL, # Main title of the plot
+                               x_axis_title = NULL, # desired x axis title
+                               y_axis_title = NULL, # desired y axis title
+                               min_y = -0.5, # min y limit
+                               max_y = 0.5, # max y limit
+                               breaks_y = 10, # breaks of y axis  ...
+                               breaks_x = 10, # breaks of x axis ..
+                               true_param = 0, # selected value for param. (eg, 0.52)
+                               true_param_x = 0, # x coordinate for true param.
+                               true_param_y = 0, # y coordinate for true param.
+                               true_param_label = NULL, # label for true param.
+                               hjust = 1 # for true param (0 left, 1 right)
+                               ) { # Start of function
+
+# 1) Estimate bias pairwise with the "compute_bias" function  ---------------
+
+resultados.secondary = 
+  map2(list_of_dfs, 
+       list_of_vectors, 
+       compute_bias_function)
+
+  
+# 2) Create a temporary df with all the results ------------------------------
+
+tabla.resultados = 
+  do.call(rbind, 
+          resultados.secondary) %>% 
+  bind_cols(parametros)
+
+colnames(tabla.resultados)[3] = c("Parameter")
+
+# Join columns to make comparative plots
+
+tabla.resultados.longer = tabla.resultados %>%
+  tidyr::pivot_longer(
+    cols = c("Bias Classical", "Bias Alternative"),
+    names_to = "Type of Bias", 
+    values_to = "Bias")
+
+
+# 3) Generate a plot ----------------------------------------------------------
+
+plot = tabla.resultados.longer %>%
+  ggplot(aes(x = `Parameter`, 
+             y = `Bias`, 
+             color = factor(`Type of Bias`))) +
+  geom_point(size = 3) +
+  geom_line(aes(group = factor(`Type of Bias`)), 
+            linewidth = 1) +
+  geom_vline(xintercept = true_param, 
+             linetype = "dashed", 
+             color = "black") +
+  geom_text(aes(x = true_param_x,
+                y = true_param_y, 
+                label = true_param_label), 
+            hjust = hjust) +
+  scale_x_continuous(breaks = seq(from = min(parametros), 
+                                  to = max(parametros),
+                                  by = breaks_x), 
+                     limits = c(min(parametros), 
+                                max(parametros))) +  
+  scale_y_continuous(limits = c(min_y, 
+                                max_y),
+                     breaks = seq(min_y,
+                                  max_y,  
+                                  by = breaks_y)) +
+  labs(
+    title = title,
+    x =  x_axis_title,  
+    y = y_axis_title,
+    color = "TND Type") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+        axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 11)) +
+  scale_color_discrete(labels = c("Alternative", "Classical"), 
+                       type = c("black", "gray"))
+
+
+# 4) Return the plot ----------------------------------------------------------
+
+return(plot)
+  
+} # End of function  
+
+
+```
+
+
+### e. Plots
+
+#### i. Create one plot per simulation
+
+Now we use the three functions created above to generate the plots.
+
+```{r}
+
+## --------------- OR_HV -----------------
+
+
+plot.OR_HV.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HV,
+                   list_of_vectors = lista_Cf.OR_HV,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_HV,
+                   title = "",
+                   x_axis_title = "OR HV", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1,
+                   true_param = 1.81, 
+                   true_param_x = 2.01,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR HV)", 
+                   hjust = 0)
+
+
+plot.OR_HV.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HV,
+                   list_of_vectors = lista_Cf.OR_HV,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_HV,
+                   title = "",
+                   x_axis_title = "OR HV", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = 1.81, 
+                   true_param_x = 2.01,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR HV)", 
+                   hjust = 0)
+
+ 
+## --------------- OR_HI -----------------
+
+
+plot.OR_HI.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HI,
+                   list_of_vectors = lista_Cf.OR_HI,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_HI,
+                   title = "",
+                   x_axis_title = "OR HI", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.1, 
+                   true_param = 0.9, 
+                   true_param_x = 0.88,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR HI)", 
+                   hjust = 1)
+
+
+plot.OR_HI.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HI,
+                   list_of_vectors = lista_Cf.OR_HI,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_HI,
+                   title = "",
+                   x_axis_title = "OR HI", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.1, 
+                   true_param = 0.9, 
+                   true_param_x = 0.88,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR HI)",
+                   hjust = 1)
+
+
+## --------------- OR_IS -----------------
+
+
+plot.OR_IS.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IS,
+                   list_of_vectors = lista_Cf.OR_IS,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_IS,
+                   title = "",
+                   x_axis_title = "OR IS", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1, 
+                   true_param = 10, 
+                   true_param_x = 9.8,
+                   true_param_y = 25,
+                   true_param_label = "Best guess (OR IS)",
+                   hjust = 1)
+
+
+plot.OR_IS.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IS,
+                   list_of_vectors = lista_Cf.OR_IS,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_IS,
+                   title = "",
+                   x_axis_title = "OR IS", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = 10,
+                   true_param_x = 9.8,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR IS)", 
+                   hjust = 1)
+
+
+## --------------- OR_IVS -----------------
+
+
+plot.OR_IVS.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IVS,
+                   list_of_vectors = lista_Cf.OR_IVS,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_IVS,
+                   title = "",
+                   x_axis_title = "OR I:VS", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.1, 
+                   true_param = 0.52,
+                   true_param_x = 0.54,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR I:VS)", 
+                   hjust = 0)
+
+
+plot.OR_IVS.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IVS,
+                   list_of_vectors = lista_Cf.OR_IVS,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_IVS,
+                   title = "",
+                   x_axis_title = "OR I:VS", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.1, 
+                   true_param = 0.52,
+                   true_param_x = 0.54,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR I:VS)", 
+                   hjust = 0)
+
+
+## --------------- OR_VT -----------------
+
+
+plot.OR_VT.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_VT,
+                   list_of_vectors = lista_Cf.OR_VT,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_VT,
+                   title = "",
+                   x_axis_title = "OR VT", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.1, 
+                   true_param = 0.92,
+                   true_param_x = 0.90,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR VT)", 
+                   hjust = 1)
+
+
+plot.OR_VT.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_VT,
+                   list_of_vectors = lista_Cf.OR_VT,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_VT,
+                   title = "",
+                   x_axis_title = "OR VT", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.1, 
+                   true_param = 0.92,
+                   true_param_x = 0.90,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR VT)", 
+                   hjust = 1)
+
+
+## --------------- OR_HT -----------------
+
+
+plot.OR_HT.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HT,
+                   list_of_vectors = lista_Cf.OR_HT,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_HT,
+                   title = "",
+                   x_axis_title = "OR HT", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1, 
+                   true_param = NULL,
+                   true_param_x = 1.5,
+                   true_param_y = 25, 
+                   true_param_label = "◄◄◄ Best guess (OR HT = 1.3)", 
+                   hjust = 0)
+
+
+plot.OR_HT.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HT,
+                   list_of_vectors = lista_Cf.OR_HT,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_HT,
+                   title = "",
+                   x_axis_title = "OR HT", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = NULL,
+                   true_param_x = 1.5,
+                   true_param_y = 0.25, 
+                   true_param_label = "◄◄◄ Best guess (OR HT = 1.3)", 
+                   hjust = 0)
+
+
+## --------------- OR_ST -----------------
+
+
+plot.OR_ST.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_ST,
+                   list_of_vectors = lista_Cf.OR_ST,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_ST,
+                   title = "",
+                   x_axis_title = "OR ST", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1, 
+                   true_param = 6,
+                   true_param_x = 6.2,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR ST)", 
+                   hjust = 0)
+
+
+plot.OR_ST.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_ST,
+                   list_of_vectors = lista_Cf.OR_ST,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_ST,
+                   title = "",
+                   x_axis_title = "OR ST", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = 6,
+                   true_param_x = 6.2,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR ST)", 
+                   hjust = 0)
+
+
+## --------------- T_Intercept -----------------
+
+
+plot.T_Intercept.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.T_Intercept,
+                   list_of_vectors = lista_Cf.T_Intercept,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = round(prevalencias.T[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of T", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.05, 
+                   true_param = 0.277,
+                   true_param_x = 0.287,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (T prevalence)", 
+                   hjust = 0)
+
+
+plot.T_Intercept.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.T_Intercept,
+                   list_of_vectors = lista_Cf.T_Intercept,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = round(prevalencias.T[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of T", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.05, 
+                   true_param = 0.277,
+                   true_param_x = 0.287,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (T prevalence)", 
+                   hjust = 0)
+
+
+## --------------- I2_Intercept -----------------
+
+
+plot.I2_Intercept.VE = 
+generate_bias_plot(list_of_dfs = lista_resultados.I2_Intercept,
+                   list_of_vectors = lista_Cf.I2_Intercept,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = round(prevalencias.I2[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of I2", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.05, 
+                   true_param = 0.122,
+                   true_param_x = 0.132,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (I2 prevalence)", 
+                   hjust = 0)
+
+
+plot.I2_Intercept.OR = 
+generate_bias_plot(list_of_dfs = lista_resultados.I2_Intercept,
+                   list_of_vectors = lista_Cf.I2_Intercept,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = round(prevalencias.I2[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of I2", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.05, 
+                   true_param = 0.122,
+                   true_param_x = 0.132,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (I2 prevalence)", 
+                   hjust = 0)
+
+
+```
+
+
+
+#### ii. Merged plots
+
+##### a) VE bias
+
+```{r}
+
+# Assign each plot to a variable
+plot1 <- plot.OR_HV.VE
+plot2 <- plot.OR_HI.VE
+plot3 <- plot.OR_IS.VE
+plot4 <- plot.OR_IVS.VE
+plot5 <- plot.OR_VT.VE
+plot6 <- plot.OR_HT.VE
+plot7 <- plot.OR_ST.VE
+plot8 <- plot.T_Intercept.VE
+plot9 <- plot.I2_Intercept.VE
+
+
+# Combine the plots into one plot with 3 rows and 3 columns 
+
+combined_plot <- grid.arrange(
+  arrangeGrob(plot1, 
+              top = textGrob("(a)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot2, 
+              top = textGrob("(b)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot3, 
+              top = textGrob("(c)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot4, 
+              top = textGrob("(d)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot5, 
+              top = textGrob("(e)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot6, 
+              top = textGrob("(f)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot7, 
+              top = textGrob("(g)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot8, 
+              top = textGrob("(h)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot9, 
+              top = textGrob("(i)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  ncol = 3,
+  top = textGrob(
+    "Bias of VE estimates((1-(exp(mean(measured log[OR])))*100 - (1-true RR)*100) \n ", 
+    gp = gpar(fontsize = 16, fontface = "bold")))
+
+# Save the combined plot as a JPEG
+ggsave("combined_plots_VE.jpeg", 
+       combined_plot, width = 18, height = 12, dpi = 300)
+
+# Print plot 
+combined_plot
+
+```
+
+
+
+##### b) OR bias
+
+```{r}
+
+# Assign each plot to a variable
+plot1 <- plot.OR_HV.OR
+plot2 <- plot.OR_HI.OR
+plot3 <- plot.OR_IS.OR
+plot4 <- plot.OR_IVS.OR
+plot5 <- plot.OR_VT.OR
+plot6 <- plot.OR_HT.OR
+plot7 <- plot.OR_ST.OR
+plot8 <- plot.T_Intercept.OR
+plot9 <- plot.I2_Intercept.OR
+
+
+# Combine the plots into one plot with 3 rows and 3 columns 
+combined_plot <- grid.arrange(
+  arrangeGrob(plot1, 
+              top = textGrob("(a)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot2, 
+              top = textGrob("(b)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot3, 
+              top = textGrob("(c)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot4, 
+              top = textGrob("(d)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot5, 
+              top = textGrob("(e)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot6, 
+              top = textGrob("(f)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot7, 
+              top = textGrob("(g)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot8, 
+              top = textGrob("(h)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot9, 
+              top = textGrob("(i)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  ncol = 3,
+  top = textGrob(
+    "Bias of the OR (exp(mean(measured log[OR])) - true RR) \n ", 
+    gp = gpar(fontsize = 16, fontface = "bold")))
+
+
+# Save the combined plot as a JPEG
+ggsave("combined_plots_OR.jpeg", 
+       combined_plot, width = 18, height = 12, dpi = 300)
+
+# Print plot 
+combined_plot
+
+
+```
+
+
+
+### f. Table format
+
+Here we created a table to report bias results after varying parameters individually.
+
+```{r}
+
+# Individually ---------------------------------------------------------------
+# Those with the larger potential for bias:
+
+# OR HV
+tabla.OR_HV = map2(lista_resultados.OR_HV, lista_Cf.OR_HV, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_HV) %>% 
+  round(digits = 3) %>% 
+  rename("OR HV" = 3) %>% 
+  relocate("OR HV")
+
+# OR VT
+tabla.OR_VT = map2(lista_resultados.OR_VT, lista_Cf.OR_VT, compute_bias_OR) %>% 
+  do.call(rbind, .)  %>% 
+  bind_cols(parametros.OR_VT) %>% 
+  round(digits = 3) %>% 
+  rename("OR VT" = 3) %>% 
+  relocate("OR VT")
+
+# I2 prevalence
+tabla.I2_Intercept = map2(lista_resultados.I2_Intercept, lista_Cf.I2_Intercept, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(round(prevalencias.I2[,1], 2)) %>% 
+  round(digits = 3) %>% 
+  rename("I2 Prevalence" = 3) %>% 
+  relocate("I2 Prevalence")
+
+# OR HI
+tabla.OR_HI = map2(lista_resultados.OR_HI, lista_Cf.OR_HI, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_HI) %>% 
+  round(digits = 3) %>% 
+  rename("OR HI" = 3) %>% 
+  relocate("OR HI")
+
+# OR HT
+tabla.OR_HT = map2(lista_resultados.OR_HT, lista_Cf.OR_HT, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_HT) %>% 
+  round(digits = 3) %>% 
+  rename("OR HT" = 3) %>% 
+  relocate("OR HT")
+
+# OR IS
+tabla.OR_IS = map2(lista_resultados.OR_IS, lista_Cf.OR_IS, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_IS) %>% 
+  round(digits = 3) %>% 
+  rename("OR IS" = 3) %>% 
+  relocate("OR IS")
+
+# OR IVS
+tabla.OR_IVS = map2(lista_resultados.OR_IVS, lista_Cf.OR_IVS, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_IVS) %>% 
+  round(digits = 3) %>% 
+  rename("OR IVS" = 3) %>% 
+  relocate("OR IVS")
+
+# OR ST
+tabla.OR_ST = map2(lista_resultados.OR_ST, lista_Cf.OR_ST, compute_bias_OR) %>%  
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_ST) %>% 
+  round(digits = 3) %>% 
+  rename("OR ST" = 3) %>% 
+  relocate("OR ST")
+
+# T Prevalence
+Tabla.T_Intercept = map2(lista_resultados.T_Intercept, lista_Cf.T_Intercept, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(round(prevalencias.T[,1],2)) %>% 
+  round(digits = 3) %>% 
+  rename("T Prevalence" = 3) %>% 
+  relocate("T Prevalence")
+
+
+
+# Merged Table ------------------------------------------------------------
+list_of_tables <- 
+  list(tabla.OR_HV, tabla.OR_VT, tabla.I2_Intercept, 
+       tabla.OR_HI, tabla.OR_HT, tabla.OR_IS, 
+       tabla.OR_IVS, tabla.OR_ST, Tabla.T_Intercept)
+merged_table = bind_rows(list_of_tables) %>% 
+  relocate(c("Bias Classical", "Bias Alternative"))
+write.csv(merged_table, "merged_table_varying_single_params.csv")
+
+# Print table
+merged_table
+
+```
+
+
+
+
+
+# -----------------------------------------------------------------------------
+# SIMS 2: uncontrolled confounding & collider bias (b) ------------------------
+# -----------------------------------------------------------------------------
+
+## 1) Vary several parameters
+
+In this section, we will vary multiple parameters simultaneously to examine how bias can be amplified. To do this, we will first modify the 'vary_parameters' and 'get_cfs' functions we created above, and then we will run the simulations.
+
+### a. "vary_several_parameters" function
+
+First, we modify the 'vary_parameters' function. This function will include a 'switch' to vary two or more parameters (i.e., 'more_parameters').
+
+Note: 'parametros 1', 'parametros 2', and 'parametros 3' must all have the same length.
+
+
+```{r}
+
+#----------------------------------------------------------------------------
+#------------------------  vary_several_parameters FUNCTION  ----------------
+#----------------------------------------------------------------------------
+
+vary_several_parameters <- function(
+    parametros_1 = NULL, # 1st set of parameters (e.g., "1,2,3,..." for OR HV)
+    parametros_2 = NULL, # 2nd set of parameters (e.g., "1,2,3,..." for OR HV)
+    argument_1 = NULL, # 1st argument to vary (e.g., "OR_HV =")
+    argument_2 = NULL, # 2nd argument to vary (e.g., "OR_HV =")
+    more_parameters = F, # Switch to include a third parameter or more
+    argument_3 = NULL, # 3rd argument to vary (e.g., "OR_HV =")    
+    parametros_3 = NULL, # 3rd set of parameters (e.g., "1,2,3,..." for OR HV)
+    nsims = 1000, # number of simulations per parameter
+    popsize = 1000000, # population size
+    seeds = NULL # df with seeds created in step 1
+    ) { # FUNCTION START
+
+
+  # 1) Create an empty df to store VE results ---------------------------------
+  
+  results = data.frame(matrix(ncol = 6, nrow = nsims)) # empty df
+  colnames(results) = c("iteration", # column names 
+                        "VE_Classical", 
+                        "SE_Classical",
+                        "VE_Alternative",
+                        "SE_Alternative",
+                        "Formula") # store the parameter changed as quality ctrl
+  
+  # 2) Create an empty list to store results for each iteration ---------------
+  
+  lista = list()  
+  
+  # 3) For loop 1: Iterate over j-th parameters in parametros sets -------------
+  
+  for (j in 1:length(parametros_1)){ # Start of "loop 1" 
+  
+  ## 3a) Pick the j-th parameter from the parametros sets, then, paste the ...
+  ### picked value to its argument (the parameter changed, e.g., "OR_HV"), ...
+  ### finally transform it into R object to be used as argument within datagen:
+    
+  parametro_1 = parametros_1[j]
+  formula_1 = paste(argument_1, parametro_1)
+
+  parametro_2 = parametros_2[j]
+  formula_2 = paste(argument_2, parametro_2)
+  
+  
+   if(more_parameters == T) { # If a third parameter will be used
+     
+     # Follow the same steps above for the 3rd parameter.
+     parametro_3 = parametros_3[j]
+     formula_3 = paste(argument_3, parametro_3)
+     
+     # Replace formula 2 with one that includes the third parameter
+     formula_2 = paste(formula_2, formula_3, sep = ", ")
+   
+   }
+  
+  # Merge formula 1 and formula 2 (the former may include or not formula 3)
+  formula = paste(formula_1, formula_2, sep = ", ")
+
+  ## 3b) Get VE and SE from n (n=nsims) simulations using the picked parameters:
+  
+  for (i in 1:nsims){ # Start of "loop 2". 
+  
+  ### i. generate data
+  df = 
+    eval(
+      parse(
+        text = paste(
+          "datagen(cf=F, popsize=popsize, seed = seeds[i],", 
+          formula, 
+          ")" )))
+
+  ### ii. select study populations for both designs 
+  
+  df_classical = df %>% filter(T==1 & S==1)
+  df_alternative = df %>% filter(T==1)  
+         
+  
+  ### iii. get VE estimates and their SEs
+  
+  #### Classical TND
+  
+  fit.classical<-glm(I2~V+C,
+                       family = binomial, 
+                       data = df_classical) 
+  results.classical = summary(fit.classical)
+  
+  #### Alternative TND
+  
+  fit.alternative<-glm(I2~V+C,
+                         family = binomial, 
+                         data = df_alternative)
+  results.alternative = summary(fit.alternative)
+
+
+  ### iv. Save results
+  
+  #### Iteration number
+  results[i,1] = i
+  #### VE against S:I (log OR)
+  results[i,2] = results.classical$coefficients[2]
+  #### SE of VE against S:I 
+  results[i,3] = results.classical$coefficients[5]
+  #### VE against I  (log OR)
+  results[i,4] = results.alternative$coefficients[2]
+  #### SE of VE against I 
+  results[i,5] = results.alternative$coefficients[5]
+  #### Parameter
+  results[i,6] = formula 
+
+    } # End of "loop 2" 
+  
+  ### v. Store df of results in a list
+  
+  lista[[j]] = results
+  
+  } # End of "loop 1" ---------------------------------------------------------
+
+  
+  # 4) Return results ---------------------------------------------------------
+  
+    return(lista)
+  
+} # FUNCTION END
+
+
+
+```
+
+
+
+### b. "get_cfs_v2" function
+
+
+This is the same function as in Simulations 1; however, it allows for the variation of two or more parameters, including an optional switch for "more parameters."
+
+
+```{r}
+
+
+#----------------------------------------------------------------------------
+#------------------------  get_cfs FUNCTION  --------------------------------
+#----------------------------------------------------------------------------
+
+get_cfs_v2 <- function(
+    parametros_1 = NULL, # 1st parameters to vary (e.g., 1,2,3 ... for OR_HV)
+    parametros_2 = NULL, # 2nd vector w/parameters to be varied
+    argument_1 = NULL, # e.g., "OR_HV =", 1st parameter to vary 
+    argument_2 = NULL, # 2nd parameter to vary 
+    more_parameters = F, # switch to use if more parameters will be varied
+    parametros_3 = NULL, # 3rd vector w/parameters to be varied
+    argument_3 = NULL, # 3rd parameter to vary 
+    popsize = 10000000 # population size
+    ) { # FUNCTION START
+
+  
+  # 1. Create empty list to store the new true VE for each parameter
+  
+  lista = list() 
+  
+  # 2. Use a for loop to iterate over n values of the chosen parameters
+  
+  for(i in 1:length(parametros_1)){
+    
+  # Pick the first value from the first parameter set and paste it to its arg.
+
+  parametro_1 = parametros_1[i]
+  formula_1 = paste(argument_1, parametro_1)
+  
+  # Pick the first value from the second parameter set and paste it to its arg.
+  
+  parametro_2 = parametros_2[i]
+  formula_2 = paste(argument_2, parametro_2)
+  
+
+  if(more_parameters == T) { # If a third parameter will be used
+     
+    # Same as above, but with the third parameter. 
+     parametro_3 = parametros_3[i]
+     formula_3 = paste(argument_3, parametro_3)
+    
+    # If used, this will replace formula_2.
+     
+     formula_2 = paste(formula_2, formula_3, sep = ", ")
+   
+   }
+  
+  
+  formula = paste(formula_1, formula_2, sep = ", ")
+    
+    
+  df.sec = 
+    eval(
+      parse(
+        text = paste(
+          "datagen(cf=T, popsize=popsize,", formula, ")")))
+  
+   
+  df.sec$Y1 = df.sec$S1*df.sec$I21 # Y^a=1
+  df.sec$Y0 = df.sec$S0*df.sec$I20 # Y^a=0
+
+  
+  # Get the true VE vs symptomatic infection    
+  Cf_Marginal_RR_Vs_SI.Sec = mean(df.sec$Y1)/mean(df.sec$Y0)
+
+  # Get the true VE vs infection    
+  Cf_Marginal_RR_Vs_I.Sec = mean(df.sec$I21)/mean(df.sec$I20)
+  
+  
+  lista[[i]] = c(Cf_Marginal_RR_Vs_SI.Sec, 
+                 Cf_Marginal_RR_Vs_I.Sec)
+  
+} 
+
+  return(lista)
+  
+}
+
+```
+
+
+
+## 2) Run simulations
+
+We will vary three parameters: 
+
+i) OR_HV   
+ii) OR_VT
+iii) I2_intercept
+
+### a) OR_HV - OR_VT
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_HV.OR_VT -----------------------------
+
+parametros.OR_HV_v2 = parametros.OR_HV 
+parametros_1 = parametros.OR_HV_v2
+argument_1 = "OR_HV =" 
+
+parametros.OR_VT_v2 = rev(parametros.OR_VT)
+parametros_2 = parametros.OR_VT_v2 
+argument_2 = "OR_VT =" 
+
+lista_resultados.OR_HV.OR_VT = 
+  vary_several_parameters(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F, 
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+## ----------- Step 2 - get Cf for:  OR_HV.OR_VT  ----------------------------
+
+lista_Cf.OR_HV.OR_VT = 
+  get_cfs_v2(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F,
+    popsize = 10000000)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### b) OR_HV - I2_Intercept
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_HV.I2_Intercept ----------------------
+
+parametros_1 = parametros.OR_HV_v2
+argument_1 = "OR_HV =" 
+
+parametros.I2_Intercept_v2 = rev(parametros.I2_Intercept) 
+parametros_2 = parametros.I2_Intercept_v2
+argument_2 = "I2_Intercept =" 
+
+lista_resultados.OR_HV.I2_Intercept = 
+  vary_several_parameters(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F, 
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+## ----------- Step 2 - get Cf for:  OR_HV, I2_Intercept ----------------------
+
+lista_Cf.OR_HV.I2_Intercept = 
+  get_cfs_v2(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F,
+    popsize = 10000000)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### c) OR_VT - I2_Intercept
+
+
+```{r}
+
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_VT.I2_Intercept ----------------------
+
+parametros_1 = parametros.OR_VT_v2 
+argument_1 = "OR_VT =" 
+
+parametros_2 = parametros.I2_Intercept_v2
+argument_2 = "I2_Intercept =" 
+
+lista_resultados.OR_VT.I2_Intercept = 
+  vary_several_parameters(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F, 
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+## ----------- Step 2 - get Cf for:  OR_VT, I2_Intercept ----------------------
+
+lista_Cf.OR_VT.I2_Intercept = 
+  get_cfs_v2(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F,
+    popsize = 10000000)
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### d) OR_HV - OR_VT - I2_Intercept
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_HV.OR_VT.I2_Intercept ---------------
+
+parametros_1 = parametros.OR_HV_v2
+argument_1 = "OR_HV =" 
+
+parametros_2 = parametros.OR_VT_v2 
+argument_2 = "OR_VT =" 
+
+parametros_3 = parametros.I2_Intercept_v2
+argument_3 = "I2_Intercept =" 
+
+
+lista_resultados.OR_HV.OR_VT.I2_Intercept = 
+  vary_several_parameters(
+    parametros_1 = parametros_1,
+    argument_1 = argument_1,
+    parametros_2 = parametros_2,
+    argument_2 = argument_2,
+    more_parameters = T,
+    parametros_3 = parametros_3,
+    argument_3 = argument_3,    
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+## ----------- Step 2 - get Cf for:  OR_HV, OR_VT, I2_Intercept --------------
+
+lista_Cf.OR_HV.OR_VT.I2_Intercept = 
+  get_cfs_v2(
+    parametros_1 = parametros_1,
+    argument_1 = argument_1,
+    parametros_2 = parametros_2,
+    argument_2 = argument_2,
+    more_parameters = T, 
+    parametros_3 = parametros_3,
+    argument_3 = argument_3,
+    popsize = 10000000) 
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+## 3) "show_bias_tables" function
+
+Now, since we have two or more predictors and one outcome (bias), we will initially compute the bias and create a data frame in both long and wide formats for each of the three types of bias calculated (bias of VE, log(OR), and OR). Subsequently, we will generate a plot illustrating the relationships between the varied parameters and the bias.
+
+
+```{r}
+
+
+show_bias_tables = 
+  function(
+    list_of_dfs = NULL, # list with  dfs for each varied parameter
+    list_of_vectors = NULL, # list of vectors with counterfactuals
+    compute_bias_function = NULL,  # bias function (e.g., compute_bias_VE) 
+    parametros_1 = NULL, # Vector w/1st set of parameters varied 
+    parametro_1 = NULL, # name of the 1st parameter varied (e.g., "OR HV")
+    parametros_2 = NULL, # Vector w/2nd set of parameters varied
+    parametro_2 = NULL, # name of the 2nd parameter varied  (e.g., "OR HV")
+    more_parameters = F, # switch to use if more than 2 parameters were varied
+    parametros_3 = NULL, # Vector w/3rd set of parameters varied 
+    parametro_3 = NULL # name of the 3rd parameter varied  (e.g., "OR HV")
+    ) { # FUNCTION START
+
+# 0) Create an empty list to store results    
+
+    lista = list()
+
+# 1) Estimate bias pairwise with the  "compute_bias" function  ---------------
+
+resultados.secondary = 
+  map2(list_of_dfs, 
+       list_of_vectors, 
+       compute_bias_function)
+
+  
+# 2) Create a temporary df with all the results ------------------------------
+
+tabla.resultados = 
+  do.call(rbind, resultados.secondary) %>% 
+  bind_cols(parametros_1) %>% 
+  bind_cols(parametros_2) 
+
+
+colnames(tabla.resultados)[3] = c(parametro_1)
+colnames(tabla.resultados)[4] = c(parametro_2)
+
+
+if(more_parameters == T){ # If a third parameter was used
+  
+  tabla.resultados = tabla.resultados %>% 
+    bind_cols(parametros_3)
+  colnames(tabla.resultados)[5] = c(parametro_3)  
+  
+}
+
+
+# Convert to a long format to make comparative plots
+
+tabla.resultados.longer = tabla.resultados %>%
+  tidyr::pivot_longer(
+    cols = c("Bias Classical", "Bias Alternative"),
+    names_to = "Type of Bias", 
+    values_to = "Bias")
+
+# 3) Return tables of results ------------------------------------------------
+    
+  lista[[1]] = tabla.resultados.longer
+  lista[[2]] = tabla.resultados  
+  return(lista)
+
+
+} # FUNCTION END
+
+
+```
+ 
+
+## 3) Results: plots and tables
+
+### i. Compute bias
+
+
+First, we will utilize the function created above and calculate the bias for each group of parameters that were varied.
+
+
+```{r}
+
+
+# OR_HV.OR_VT -----------------------------------------------------------------
+
+tabla.resultados.OR_HV.OR_VT =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_HV.OR_VT, 
+  list_of_vectors = lista_Cf.OR_HV.OR_VT,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_HV_v2,
+  parametro_1 = "OR HV",
+  parametros_2 = parametros.OR_VT_v2,
+  parametro_2 = "OR VT", 
+  more_parameters = F)
+
+tabla.resultados.longer.OR_HV.OR_VT = 
+  tabla.resultados.OR_HV.OR_VT[[1]]
+tabla.resultados.wider.OR_HV.OR_VT =
+  tabla.resultados.OR_HV.OR_VT[[2]]
+
+
+# OR_HV.I2_Intercept ----------------------------------------------------------
+
+
+tabla.resultados.OR_HV.I2_Intercept =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_HV.I2_Intercept, 
+  list_of_vectors = lista_Cf.OR_HV.I2_Intercept,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_HV_v2,
+  parametro_1 = "OR HV",
+  parametros_2 = rev(round(prevalencias.I2[,1], 2)), # plots use prev instead param.
+  parametro_2 = "I2 Prevalence", 
+  more_parameters = F)
+
+tabla.resultados.longer.OR_HV.I2_Intercept = 
+  tabla.resultados.OR_HV.I2_Intercept[[1]]
+tabla.resultados.wider.OR_HV.I2_Intercept =
+  tabla.resultados.OR_HV.I2_Intercept[[2]]
+
+
+# OR_VT.I2_Intercept ----------------------------------------------------------
+
+
+tabla.resultados.OR_VT.I2_Intercept =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_VT.I2_Intercept, 
+  list_of_vectors = lista_Cf.OR_VT.I2_Intercept,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_VT_v2,
+  parametro_1 = "OR VT",
+  parametros_2 = rev(round(prevalencias.I2[,1], 2)),
+  parametro_2 = "I2 Prevalence", 
+  more_parameters = F)
+
+tabla.resultados.longer.OR_VT.I2_Intercept = 
+  tabla.resultados.OR_VT.I2_Intercept[[1]]
+tabla.resultados.wider.OR_VT.I2_Intercept =
+  tabla.resultados.OR_VT.I2_Intercept[[2]]
+
+# OR_HV.OR_VT.I2_Intercept ----------------------------------------------------
+
+
+tabla.resultados.OR_HV.OR_VT.I2_Intercept =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_HV.OR_VT.I2_Intercept, 
+  list_of_vectors = lista_Cf.OR_HV.OR_VT.I2_Intercept,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_HV_v2,
+  parametro_1 = "OR HV",
+  parametros_2 = parametros.OR_VT_v2,
+  parametro_2 = "OR VT",
+  more_parameters = T,
+  parametros_3 = rev(round(prevalencias.I2[,1], 2)),
+  parametro_3 = "I2 Prevalence")
+
+tabla.resultados.longer.OR_HV.OR_VT.I2_Intercept = 
+  tabla.resultados.OR_HV.OR_VT.I2_Intercept[[1]]
+tabla.resultados.wider.OR_HV.OR_VT.I2_Intercept =
+  tabla.resultados.OR_HV.OR_VT.I2_Intercept[[2]]
+
+
+```
+
+### ii. Plots: 2 varied parameters 
+
+#### a) "two_params_plot" function
+
+First, we create a function to create plots where we vary only two parameters at a time.
+
+
+```{r}
+
+# "two_params_plot" function ----------------------------------------------------
+
+
+two_params_plot = function(
+  table_results_long = NULL, # The table with the results in long format
+  title = NULL, # Main Title for plot
+  x_axis = NULL, # Parameter to be shown in the x axis
+  y_axis = NULL, # Parameter to be shown in the y axis
+  color = NULL, # Parameter to be represented by color
+  color_title = NULL, # Title for the color legend
+  x_axis_title = NULL, # X axis title
+  y_axis_title = NULL, # Y axis title
+  y_axis_min = NULL, # inferior limit for  y axis
+  y_axis_max = NULL, # superior limit for  y axis
+  y_axis_by = NULL # breaks for y axis
+  ){
+
+figura =    
+table_results_long %>% 
+  ggplot(aes(x = x_axis, 
+             y = y_axis)) +
+  geom_point(aes(color = color), size = 3) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(from = min(x_axis), 
+                                  to = max(x_axis),
+                                  by = abs(min(diff(unique(x_axis)))))) +
+  scale_y_continuous(
+      breaks = seq(from = y_axis_min,
+                   to = y_axis_max,
+                   by = y_axis_by), 
+      limits =  c(y_axis_min, y_axis_max)) +
+  theme_classic() +
+  facet_wrap(~ `Type of Bias`) +
+  labs(title = title,
+       x = x_axis_title,
+       y = y_axis_title) +   
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+        axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 11)) +
+  scale_color_gradient(low = "lightgray", high = "black", name = color_title)
+  
+  
+  return(figura)  
+  
+  
+}
+
+
+```
+
+#### b) Bias OR
+##### b.1) Individual plots 
+
+```{r}
+
+
+# OR_HV.OR_VT -------------------------------------------------------------
+
+plot.OR_HV.OR_VT =
+two_params_plot(
+  table_results_long = tabla.resultados.longer.OR_HV.OR_VT,
+  title = "Bias of the OR (exp(mean(measured log[OR])) - true RR) \n ",
+  x_axis_title = "OR HV",
+  x_axis = tabla.resultados.longer.OR_HV.OR_VT$`OR HV`,
+  y_axis_title = "Bias",
+  y_axis = tabla.resultados.longer.OR_HV.OR_VT$Bias,
+  color_title = "OR VT",
+  color = tabla.resultados.longer.OR_HV.OR_VT$`OR VT`,
+  y_axis_by = 0.15, 
+  y_axis_min = -0.3, 
+  y_axis_max = 0.9)
+
+  
+
+# OR_HV.I2_Intercept -----------------------------------------------------
+
+plot.OR_HV.I2_Intercept =
+two_params_plot(
+  table_results_long = tabla.resultados.longer.OR_HV.I2_Intercept,
+  title = "",
+  x_axis_title = "OR HV",
+  x_axis = tabla.resultados.longer.OR_HV.I2_Intercept$`OR HV`,
+  y_axis_title = "Bias",
+  y_axis = tabla.resultados.longer.OR_HV.I2_Intercept$Bias,
+  color_title = "Baseline \nPrevalence\nof I2",
+  color = tabla.resultados.longer.OR_HV.I2_Intercept$`I2 Prevalence`,
+  y_axis_by = 0.15,
+  y_axis_min = -0.3,
+  y_axis_max = 0.9)
+
+
+# OR_VT.I2_Intercept -----------------------------------------------------
+
+plot.OR_VT.I2_Intercept =
+two_params_plot(
+  table_results_long = tabla.resultados.longer.OR_VT.I2_Intercept,
+  title = "",
+  x_axis_title = "OR VT",
+  x_axis = tabla.resultados.longer.OR_VT.I2_Intercept$`OR VT`,
+  y_axis_title = "Bias",
+  y_axis = tabla.resultados.longer.OR_VT.I2_Intercept$Bias,
+  color_title = "Baseline \nPrevalence\nof I2",
+  color = tabla.resultados.longer.OR_VT.I2_Intercept$`I2 Prevalence`,
+  y_axis_by = 0.15, 
+  y_axis_min = -0.3, 
+  y_axis_max = 0.9)
+
+
+```
+
+
+##### b.2) Merged plots 
+
+
+```{r}
+
+
+# save plots
+
+plot1 = plot.OR_HV.OR_VT
+plot2 = plot.OR_HV.I2_Intercept
+plot3 = plot.OR_VT.I2_Intercept
+
+# Combine the plots into one plot with 3 rows and 2 columns and store it in a variable
+combined_plot <- arrangeGrob(plot1, plot2, plot3, 
+                             ncol = 1)
+
+# Save the combined plot as a JPEG
+ggsave("combined_plots_several_params_OR.jpeg", 
+       combined_plot, width = 10, height = 10, dpi = 300)
+
+# Print plot
+combined_plot
+
+```
+
+
+
+
+### iii. (Extra) Plots: 3 varied parameters 
+
+Here we create a 3D plot for the three varied parameters.
+
+
+```{r, eval = F}
+
+# Filter the data based on type of bias
+bias_classical <- tabla.resultados.longer.OR_HV.OR_VT.I2_Intercept %>%
+  filter(`Type of Bias` == "Bias Classical")
+
+bias_alternative <- tabla.resultados.longer.OR_HV.OR_VT.I2_Intercept %>%
+  filter(`Type of Bias` == "Bias Alternative")
+
+# Create a 3D plot for bias classical
+plot_classical <- 
+  plot_ly(bias_classical, 
+        x = ~`OR HV`,
+        y = ~`OR VT`,
+        z = ~`I2 Prevalence`,
+        color = ~ `Bias`, 
+        colors = c("lightgreen", "darkgreen"),
+        type = "scatter3d",
+        mode = "markers",
+        marker = list(size = 8, color = ~`Bias`)) %>%
+  layout(title = "3D Plot for the Classical TND <br> <br> Note: x= OR HV, y= OR VT, z= I2 prevalence",
+         scene = list(xaxis = list(title = "OR HV"),
+                      yaxis = list(title = "OR VT"),
+                      zaxis = list(title = "I2 Prevalence"),
+                      camera = list(eye = list(x = 1.25, y = 1.25, z = 1.25)),
+                      aspectmode = 'cube'),
+         showlegend = TRUE) 
+
+
+
+# Create a 3D plot for bias alternative
+plot_alternative <- 
+  plot_ly(bias_alternative, 
+        x = ~`OR HV`,
+        y = ~`OR VT`,
+        z = ~`I2 Prevalence`,
+        color = ~ `Bias`, 
+        colors = c('orange', 'firebrick'),
+        type = "scatter3d",
+        mode = "markers",
+        marker = list(size = 8, color = ~`Bias`)) %>%
+  layout(title = "3D Plot for the Alternative TND",
+         scene = list(xaxis = list(title = "OR HV"),
+                      yaxis = list(title = "OR VT"),
+                      zaxis = list(title = "I2 Prevalence"),
+                      camera = list(eye = list(x = 1.25, y = 1.25, z = 1.25)),
+                      aspectmode = 'cube'),
+         showlegend = TRUE) 
+
+  
+  
+  
+# Display the plots
+plot_classical
+plot_alternative
+
+
+# Save the plots
+htmlwidgets::saveWidget(plot_classical, "plot_3d_classical.html")
+htmlwidgets::saveWidget(plot_alternative, "plot_3d_alternative.html")
+
+```
+
+
+### iv. Table
+
+Finally, we present all the aforementioned results in a table format.
+
+
+```{r}
+
+# Merge tables
+
+merged.table =
+  bind_rows(tabla.resultados.wider.OR_HV.OR_VT, 
+          tabla.resultados.wider.OR_HV.I2_Intercept,
+          tabla.resultados.wider.OR_VT.I2_Intercept,
+          tabla.resultados.wider.OR_HV.OR_VT.I2_Intercept)
+
+# Reorder the table
+
+merged.table = merged.table %>%
+  select(`OR HV`, `OR VT`, `I2 Prevalence`, everything())
+
+# Export the reordered table to a CSV file
+
+write.csv(merged.table, 
+          "several_varied_parameters.csv", 
+          row.names = FALSE)
+
+# Print table
+merged.table
+
+```
+
+
+
+# -----------------------------------------------------------------------------
+# SIMS 3: Outcome misclassification (a) ---------------------------------------
+# -----------------------------------------------------------------------------
+
+
+Finally, we will replicate the main scenario of the Simulations (1) section, but this time, under the assumption of differential misclassification of the outcome status.
+
+
+## 1) For loop (with missclassification)
+
+Here, we use the function created above to conduct 1000 Monte Carlo simulations, followed by the estimation of bias using the true RR estimates.
+
+
+```{r}
+
+#------------------------------------------------------------------------------
+#------------------ GET EVERYTHING READY FOR THE FOR LOOP  --------------------
+#------------------------------------------------------------------------------
+
+# 1) Save starting time
+
+(A=Sys.time()) 
+
+# 2) Define the number of simulations (nsims) and create an empty df to save the results
+
+## number of simulations
+nsims = 1000 
+
+## Empty df
+results = data.frame(matrix(ncol = 5, 
+                            nrow = nsims))
+
+colnames(results) = c("iteration", 
+                      "VE_Classical", 
+                      "SE_Classical",
+                      "VE_Alternative",
+                      "SE_Alternative")
+
+# 3) Set popsize for each simulation 
+popsize = 1000000 # 1,000,000
+
+
+#------------------------------------------------------------------------------
+#--------------------------- START SIMULATIONS  -------------------------------
+#------------------------------------------------------------------------------
+
+  for (i in 1:nsims){ 
+  
+  # a. Simulate i-th data-frame -----------------------------------------------
+    
+  df = datagen(cf = F, 
+               mc = T,
+               popsize = popsize,
+               seed = seeds[i])
+  
+  # b. Select "classical" & "alternative" populations from the i-th df --------
+  
+  df_classical = df %>% # classical: symptomatic & tested individuals 
+    filter(T==1 & S==1)
+  
+  df_alternative = df %>% 
+    filter(T==1)  # alternative: all tested individuals
+         
+  
+  # c. Get log(OR)s estimates and their SEs -----------------------------------
+  
+  ## Classical TND
+  
+  fit.classical<-glm(I2_star~V+C,
+                       family = binomial, 
+                       data = df_classical) 
+  
+  results.classical = summary(fit.classical)
+  
+  ## Alternative TND
+  
+  fit.alternative<-glm(I2_star~V+C,
+                         family = binomial, 
+                         data = df_alternative)
+  
+  results.alternative = summary(fit.alternative)
+
+
+  # d. Save results -----------------------------------------------------------
+  
+  ## Iteration number
+  results[i,1] = i
+  ## VE against S:I (log[OR])
+  results[i,2] = results.classical$coefficients[2]
+  ## SE of VE against S:I 
+  results[i,3] = results.classical$coefficients[5]
+  ## VE against I (log[OR])
+  results[i,4] = results.alternative$coefficients[2]
+  ## SE of VE against I 
+  results[i,5] = results.alternative$coefficients[5]
+
+  }
+
+
+# Measure the elapsed time 
+
+(B=Sys.time()); B-A 
+
+
+# Store results
+
+main.results.mc = results
+
+```
+
+
+
+## 2) Analyze results w/mc
+
+We will now analyze the results of the main simulation.
+
+
+```{r}
+
+# 1) Classical TND  -----------------------------------------------------------
+
+## RR vs SI
+
+round(Cf_Marginal_RR_Vs_SI, 3) 
+
+## mean OR vs SI
+
+measured.conditional.OR.SI.mc = 
+  mean(main.results.mc$VE_Classical, na.rm = T) 
+round(exp(measured.conditional.OR.SI.mc), 3) 
+
+
+## Avg SE Classical
+
+Main_Results.Avg_SE_Classical.mc = 
+  sqrt(mean(main.results.mc$SE_Classical^2, na.rm = T)) 
+round(Main_Results.Avg_SE_Classical.mc, 3) 
+
+## MC SE Classical
+
+Main_Results.MCSE_Classical.mc = 
+  sd(main.results.mc$VE_Classical, na.rm = T)
+round(Main_Results.MCSE_Classical.mc,3)
+
+## Bias of the OR vs SI
+
+round(
+  exp(measured.conditional.OR.SI.mc) - # i.e., exp(mean(betas))
+  Cf_Marginal_RR_Vs_SI, 3) # i.e., ((marginalRR))
+
+
+
+# 2) Alternative TND  ---------------------------------------------------------
+
+## RR vs I
+
+round(Cf_Marginal_RR_Vs_I, 3) 
+
+## mean OR vs I
+
+measured.conditional.OR.I.mc =  
+  mean(main.results.mc$VE_Alternative, na.rm = T) 
+round(exp(measured.conditional.OR.I.mc), 3) 
+
+## Avg SE Alternative
+
+Main_Results.Avg_SE_Alternative.mc = 
+  sqrt(mean(main.results.mc$SE_Alternative^2, na.rm = T))
+round(Main_Results.Avg_SE_Alternative.mc, 3) 
+
+## MC SE Alternative
+
+Main_Results.MCSE_Alternative.mc = 
+  sd(main.results.mc$VE_Alternative, na.rm = T)
+round(Main_Results.MCSE_Alternative.mc, 3)
+
+## Bias of the OR vs I
+
+round(
+  exp(measured.conditional.OR.I.mc) - # i.e., exp(mean(betas))
+  Cf_Marginal_RR_Vs_I, 3) # i.e., ((marginalRR))
+
+
+
+```
+
+
+
+
+## 3) Vary parameters 
+
+### a. "vary_parameters.mc" function 
+
+
+This is the same function as in Section 1, but it uses I_star instead of I to compute VE. Note that the counterfactuals function is the same, so there is no need to repeat it here.
+
+
+```{r}
+
+#----------------------------------------------------------------------------
+#------------------------  vary_parameters.mc FUNCTION  ---------------------
+#----------------------------------------------------------------------------
+
+vary_parameters.mc <- function(parametros = NULL, # Vector w/parameters to be varied
+                            nsims = 1000, # number of simulations per parameter
+                            popsize = 1000000, # population size
+                            seeds = NULL, # df with seeds
+                            argument = NULL # e.g., "OR_HV =", parameter to vary 
+                            ) { # FUNCTION START
+
+
+  # 1) Create an empty df to store VE results ---------------------------------
+  
+  results = data.frame(matrix(ncol = 6, nrow = nsims)) # empty df
+  colnames(results) = c("iteration", # column names 
+                        "VE_Classical", 
+                        "SE_Classical",
+                        "VE_Alternative",
+                        "SE_Alternative",
+                        "Formula") # store the parameter changed as quality ctrl
+  
+  # 2) Create an empty list to store results for each iteration ---------------
+  
+  lista = list()  
+  
+  # 3) For loop 1: Iterate over j-th parameters in parametros set -------------
+  
+  for (j in 1:length(parametros)){ # Start of "loop 1" 
+  
+  ## 3a) Pick the j-th parameter from the parametros set, then, paste the ...
+  ### picked value to its argument (the parameter changed, e.g., "OR_HV"), ...
+  ### finally transform it into R object to be used as argument within datagen:
+    
+  parametro = parametros[j]
+  formula = paste(argument, parametro)
+
+  ## 3b) Get VE and SE from n (n=nsims) simulations using the picked parameter:
+  
+  for (i in 1:nsims){ # Start of "loop 2". 
+  
+  ### i. generate data
+  df = 
+    eval(
+      parse(
+        text = paste(
+          "datagen(cf=F, mc=T, popsize=popsize, seed = seeds[i],", 
+          formula, 
+          ")" )))
+
+  ### ii. select study populations for both designs 
+  
+  df_classical = df %>% filter(T==1 & S==1)
+  df_alternative = df %>% filter(T==1)  
+         
+  
+  ### iii. get VE estimates and their SEs
+  
+  #### Classical TND
+  
+  fit.classical<-glm(I2_star~V+C,
+                       family = binomial, 
+                       data = df_classical) 
+  results.classical = summary(fit.classical)
+  
+  #### Alternative TND
+  
+  fit.alternative<-glm(I2_star~V+C,
+                         family = binomial, 
+                         data = df_alternative)
+  results.alternative = summary(fit.alternative)
+
+
+  ### iv. Save results
+  
+  #### Iteration number
+  results[i,1] = i
+  #### VE against S:I (log OR)
+  results[i,2] = results.classical$coefficients[2]
+  #### SE of VE against S:I 
+  results[i,3] = results.classical$coefficients[5]
+  #### VE against I  (log OR)
+  results[i,4] = results.alternative$coefficients[2]
+  #### SE of VE against I 
+  results[i,5] = results.alternative$coefficients[5]
+  #### Parameter
+  results[i,6] = formula 
+  
+    } # End of "loop 2" 
+  
+  ### v. Store df of results in a list
+  
+  lista[[j]] = results
+  
+    } # End of "loop 1" ---------------------------------------------------------
+
+  
+  # 4) Return results ---------------------------------------------------------
+  
+    return(lista)
+  
+} # FUNCTION END
+
+
+
+```
+
+
+
+### b. Run simulations
+
+The process here is the same as the steps outlined above (Section 1).
+
+#### i. OR_HV.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_HV 
+argument = "OR_HV =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_HV.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+
+```
+
+
+#### ii. OR_HI.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_HI 
+argument = "OR_HI =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_HI.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+#### iii. OR_IS.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_IS 
+argument = "OR_IS =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_IS.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+#### iv. OR_IVS.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_IVS
+argument = "OR_IVS =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_IVS.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+#### v. OR_VT.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_VT 
+argument = "OR_VT =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_VT.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+#### vi. OR_HT.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_HT 
+argument = "OR_HT =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_HT.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+#### vii. OR_ST.mc
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.OR_ST 
+argument = "OR_ST =" 
+
+# 3. Run simulations
+
+lista_resultados.OR_ST.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+#### viii. T_Intercept.mc
+
+
+```{r}
+
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.T_Intercept
+argument = "T_Intercept =" 
+
+# 3. Run simulations
+
+lista_resultados.T_Intercept.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+#### ix. I2_Intercept.mc
+
+
+```{r}
+
+# 1. Register starting time
+
+(A=Sys.time()) 
+
+# 2. Use same parameters as in Section 1
+
+parametros = parametros.I2_Intercept 
+argument = "I2_Intercept =" 
+
+# 3. Run simulations
+
+lista_resultados.I2_Intercept.mc = 
+  vary_parameters.mc(
+    parametros = parametros,
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds, 
+    argument = argument) 
+
+# 4. Measure elapsed time
+
+B=Sys.time(); (B-A) 
+
+```
+
+
+
+### c. Plots
+
+#### i. Create one mc plot per simulation
+
+We use the same functions created in Section 1 to generate the plots.
+
+```{r}
+
+## --------------- OR_HV.mc -----------------
+
+
+plot.OR_HV.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HV.mc,
+                   list_of_vectors = lista_Cf.OR_HV,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_HV,
+                   title = "",
+                   x_axis_title = "OR HV", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1,
+                   true_param = 1.81, 
+                   true_param_x = 2.01,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR HV)", 
+                   hjust = 0)
+
+
+plot.OR_HV.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HV.mc,
+                   list_of_vectors = lista_Cf.OR_HV,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_HV,
+                   title = "",
+                   x_axis_title = "OR HV", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = 1.81, 
+                   true_param_x = 2.01,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR HV)", 
+                   hjust = 0)
+
+ 
+## --------------- OR_HI.mc -----------------
+
+
+plot.OR_HI.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HI.mc,
+                   list_of_vectors = lista_Cf.OR_HI,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_HI,
+                   title = "",
+                   x_axis_title = "OR HI", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.1, 
+                   true_param = 0.9, 
+                   true_param_x = 0.88,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR HI)", 
+                   hjust = 1)
+
+
+plot.OR_HI.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HI.mc,
+                   list_of_vectors = lista_Cf.OR_HI,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_HI,
+                   title = "",
+                   x_axis_title = "OR HI", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.1, 
+                   true_param = 0.9, 
+                   true_param_x = 0.88,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR HI)",
+                   hjust = 1)
+
+
+## --------------- OR_IS.mc -----------------
+
+
+plot.OR_IS.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IS.mc,
+                   list_of_vectors = lista_Cf.OR_IS,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_IS,
+                   title = "",
+                   x_axis_title = "OR IS", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1, 
+                   true_param = 10, 
+                   true_param_x = 9.8,
+                   true_param_y = 25,
+                   true_param_label = "Best guess (OR IS)",
+                   hjust = 1)
+
+
+plot.OR_IS.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IS.mc,
+                   list_of_vectors = lista_Cf.OR_IS,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_IS,
+                   title = "",
+                   x_axis_title = "OR IS", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = 10,
+                   true_param_x = 9.8,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR IS)", 
+                   hjust = 1)
+
+
+## --------------- OR_IVS.mc -----------------
+
+
+plot.OR_IVS.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IVS.mc,
+                   list_of_vectors = lista_Cf.OR_IVS,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_IVS,
+                   title = "",
+                   x_axis_title = "OR I:VS", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.1, 
+                   true_param = 0.52,
+                   true_param_x = 0.54,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR I:VS)", 
+                   hjust = 0)
+
+
+plot.OR_IVS.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_IVS.mc,
+                   list_of_vectors = lista_Cf.OR_IVS,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_IVS,
+                   title = "",
+                   x_axis_title = "OR I:VS", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.1, 
+                   true_param = 0.52,
+                   true_param_x = 0.54,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR I:VS)", 
+                   hjust = 0)
+
+
+## --------------- OR_VT.mc -----------------
+
+
+plot.OR_VT.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_VT.mc,
+                   list_of_vectors = lista_Cf.OR_VT,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_VT,
+                   title = "",
+                   x_axis_title = "OR VT", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.1, 
+                   true_param = 0.92,
+                   true_param_x = 0.90,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR VT)", 
+                   hjust = 1)
+
+
+plot.OR_VT.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_VT.mc,
+                   list_of_vectors = lista_Cf.OR_VT,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_VT,
+                   title = "",
+                   x_axis_title = "OR VT", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.1, 
+                   true_param = 0.92,
+                   true_param_x = 0.90,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR VT)", 
+                   hjust = 1)
+
+
+## --------------- OR_HT.mc -----------------
+
+
+plot.OR_HT.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HT.mc,
+                   list_of_vectors = lista_Cf.OR_HT,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_HT,
+                   title = "",
+                   x_axis_title = "OR HT", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1, 
+                   true_param = NULL,
+                   true_param_x = 1.5,
+                   true_param_y = 25, 
+                   true_param_label = "◄◄◄ Best guess (OR HT = 1.3)", 
+                   hjust = 0)
+
+
+plot.OR_HT.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_HT.mc,
+                   list_of_vectors = lista_Cf.OR_HT,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_HT,
+                   title = "",
+                   x_axis_title = "OR HT", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = NULL,
+                   true_param_x = 1.5,
+                   true_param_y = 0.25, 
+                   true_param_label = "◄◄◄ Best guess (OR HT = 1.3)", 
+                   hjust = 0)
+
+
+## --------------- OR_ST.mc -----------------
+
+
+plot.OR_ST.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_ST.mc,
+                   list_of_vectors = lista_Cf.OR_ST,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = parametros.OR_ST,
+                   title = "",
+                   x_axis_title = "OR ST", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 1, 
+                   true_param = 6,
+                   true_param_x = 6.2,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (OR ST)", 
+                   hjust = 0)
+
+
+plot.OR_ST.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.OR_ST.mc,
+                   list_of_vectors = lista_Cf.OR_ST,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = parametros.OR_ST,
+                   title = "",
+                   x_axis_title = "OR ST", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 1, 
+                   true_param = 6,
+                   true_param_x = 6.2,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (OR ST)", 
+                   hjust = 0)
+
+
+## --------------- T_Intercept.mc -----------------
+
+
+plot.T_Intercept.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.T_Intercept.mc,
+                   list_of_vectors = lista_Cf.T_Intercept,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = round(prevalencias.T[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of T", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.05, 
+                   true_param = 0.277,
+                   true_param_x = 0.287,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (T prevalence)", 
+                   hjust = 0)
+
+
+plot.T_Intercept.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.T_Intercept.mc,
+                   list_of_vectors = lista_Cf.T_Intercept,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = round(prevalencias.T[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of T", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.05, 
+                   true_param = 0.277,
+                   true_param_x = 0.287,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (T prevalence)", 
+                   hjust = 0)
+
+
+## --------------- I2_Intercept.mc -----------------
+
+
+plot.I2_Intercept.VE.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.I2_Intercept.mc,
+                   list_of_vectors = lista_Cf.I2_Intercept,
+                   compute_bias_function = compute_bias_VE,
+                   parametros = round(prevalencias.I2[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of I2", 
+                   y_axis_title = "Bias", 
+                   min_y = -25, 
+                   max_y = +25, 
+                   breaks_y = 5,
+                   breaks_x = 0.05, 
+                   true_param = 0.122,
+                   true_param_x = 0.132,
+                   true_param_y = 25, 
+                   true_param_label = "Best guess (I2 prevalence)", 
+                   hjust = 0)
+
+
+plot.I2_Intercept.OR.mc = 
+generate_bias_plot(list_of_dfs = lista_resultados.I2_Intercept.mc,
+                   list_of_vectors = lista_Cf.I2_Intercept,
+                   compute_bias_function = compute_bias_OR,
+                   parametros = round(prevalencias.I2[,1], 2),
+                   title = "",
+                   x_axis_title = "Baseline Prevalence of I2", 
+                   y_axis_title = "Bias", 
+                   min_y = -0.25, 
+                   max_y = 0.25, 
+                   breaks_y = 0.05,
+                   breaks_x = 0.05, 
+                   true_param = 0.122,
+                   true_param_x = 0.132,
+                   true_param_y = 0.25, 
+                   true_param_label = "Best guess (I2 prevalence)", 
+                   hjust = 0)
+
+
+
+```
+
+
+#### ii. Merged plots
+
+##### a) VE bias (w/mc)
+
+```{r}
+
+# Assign each plot to a variable
+plot1 <- plot.OR_HV.VE.mc
+plot2 <- plot.OR_HI.VE.mc
+plot3 <- plot.OR_IS.VE.mc
+plot4 <- plot.OR_IVS.VE.mc
+plot5 <- plot.OR_VT.VE.mc
+plot6 <- plot.OR_HT.VE.mc
+plot7 <- plot.OR_ST.VE.mc
+plot8 <- plot.T_Intercept.VE.mc
+plot9 <- plot.I2_Intercept.VE.mc
+
+
+# Combine the plots into one plot with 3 rows and 3 columns 
+
+combined_plot <- grid.arrange(
+  arrangeGrob(plot1, 
+              top = textGrob("(a)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot2, 
+              top = textGrob("(b)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot3, 
+              top = textGrob("(c)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot4, 
+              top = textGrob("(d)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot5, 
+              top = textGrob("(e)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot6, 
+              top = textGrob("(f)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot7, 
+              top = textGrob("(g)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot8, 
+              top = textGrob("(h)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot9, 
+              top = textGrob("(i)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  ncol = 3,
+  top = textGrob(
+    "Bias of VE estimates((1-(exp(mean(measured log[OR])))*100 - (1-true RR)*100) \n ", 
+    gp = gpar(fontsize = 16, fontface = "bold")))
+
+
+# Save the combined plot as a JPEG
+ggsave("combined_plots_VE.mc.jpeg", 
+       combined_plot, width = 18, height = 12, dpi = 300)
+
+
+# Print plot
+combined_plot
+
+
+```
+
+
+##### b) OR bias (w/mc)
+
+```{r}
+
+# Assign each plot to a variable
+plot1 <- plot.OR_HV.OR.mc
+plot2 <- plot.OR_HI.OR.mc
+plot3 <- plot.OR_IS.OR.mc
+plot4 <- plot.OR_IVS.OR.mc
+plot5 <- plot.OR_VT.OR.mc
+plot6 <- plot.OR_HT.OR.mc
+plot7 <- plot.OR_ST.OR.mc
+plot8 <- plot.T_Intercept.OR.mc
+plot9 <- plot.I2_Intercept.OR.mc
+
+
+# Combine the plots into one plot with 3 rows and 3 columns 
+combined_plot <- grid.arrange(
+  arrangeGrob(plot1, 
+              top = textGrob("(a)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot2, 
+              top = textGrob("(b)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot3, 
+              top = textGrob("(c)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot4, 
+              top = textGrob("(d)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot5, 
+              top = textGrob("(e)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot6, 
+              top = textGrob("(f)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot7, 
+              top = textGrob("(g)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot8, 
+              top = textGrob("(h)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  arrangeGrob(plot9, 
+              top = textGrob("(i)", x = 0, hjust = 0, 
+                             gp = gpar(fontsize = 12, fontface = "bold"))),
+  ncol = 3,
+  top = textGrob(
+    "Bias of the OR (exp(mean(measured log[OR])) - true RR) \n ", 
+    gp = gpar(fontsize = 16, fontface = "bold")))
+
+
+# Save the combined plot as a JPEG
+ggsave("combined_plots_OR.mc.jpeg", 
+       combined_plot, width = 18, height = 12, dpi = 300)
+
+# Print plot
+combined_plot
+
+
+```
+
+
+
+
+#### d. Table format
+
+Here we created a table to report bias results after varying parameters individually.
+
+
+```{r}
+
+# Individually ---------------------------------------------------------------
+# Those with the larger potential for bias:
+
+# OR HV
+tabla.OR_HV.mc = map2(lista_resultados.OR_HV.mc, 
+                   lista_Cf.OR_HV, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_HV) %>% 
+  round(digits = 3) %>% 
+  rename("OR HV" = 3) %>% 
+  relocate("OR HV")
+
+# OR VT
+tabla.OR_VT.mc = map2(lista_resultados.OR_VT.mc, 
+                      lista_Cf.OR_VT, compute_bias_OR) %>% 
+  do.call(rbind, .)  %>% 
+  bind_cols(parametros.OR_VT) %>% 
+  round(digits = 3) %>% 
+  rename("OR VT" = 3) %>% 
+  relocate("OR VT")
+
+# I2 prevalence
+tabla.I2_Intercept.mc = map2(lista_resultados.I2_Intercept.mc,
+                             lista_Cf.I2_Intercept, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(round(prevalencias.I2[,1], 2)) %>% 
+  round(digits = 3) %>% 
+  rename("I2 Prevalence" = 3) %>% 
+  relocate("I2 Prevalence")
+
+# OR HI
+tabla.OR_HI.mc = map2(lista_resultados.OR_HI.mc, 
+                      lista_Cf.OR_HI, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_HI) %>% 
+  round(digits = 3) %>% 
+  rename("OR HI" = 3) %>% 
+  relocate("OR HI")
+
+# OR HT
+tabla.OR_HT.mc = map2(lista_resultados.OR_HT.mc,
+                      lista_Cf.OR_HT, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_HT) %>% 
+  round(digits = 3) %>% 
+  rename("OR HT" = 3) %>% 
+  relocate("OR HT")
+
+# OR IS
+tabla.OR_IS.mc = map2(lista_resultados.OR_IS.mc, 
+                      lista_Cf.OR_IS, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_IS) %>% 
+  round(digits = 3) %>% 
+  rename("OR IS" = 3) %>% 
+  relocate("OR IS")
+
+# OR IVS
+tabla.OR_IVS.mc = map2(lista_resultados.OR_IVS.mc, 
+                       lista_Cf.OR_IVS, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_IVS) %>% 
+  round(digits = 3) %>% 
+  rename("OR IVS" = 3) %>% 
+  relocate("OR IVS")
+
+# OR ST
+tabla.OR_ST.mc = map2(lista_resultados.OR_ST.mc, 
+                      lista_Cf.OR_ST, compute_bias_OR) %>%  
+  do.call(rbind, .) %>% 
+  bind_cols(parametros.OR_ST) %>% 
+  round(digits = 3) %>% 
+  rename("OR ST" = 3) %>% 
+  relocate("OR ST")
+
+# T Prevalence
+Tabla.T_Intercept.mc = map2(lista_resultados.T_Intercept.mc, 
+                         lista_Cf.T_Intercept, compute_bias_OR) %>% 
+  do.call(rbind, .) %>% 
+  bind_cols(round(prevalencias.T[,1],2)) %>% 
+  round(digits = 3) %>% 
+  rename("T Prevalence" = 3) %>% 
+  relocate("T Prevalence")
+
+
+
+# Merged Table ------------------------------------------------------------
+list_of_tables.mc <- 
+  list(tabla.OR_HV.mc, tabla.OR_VT.mc, tabla.I2_Intercept.mc, 
+       tabla.OR_HI.mc, tabla.OR_HT.mc, tabla.OR_IS.mc, 
+       tabla.OR_IVS.mc, tabla.OR_ST.mc, Tabla.T_Intercept.mc)
+merged_table.mc = bind_rows(list_of_tables.mc) %>% 
+  relocate(c("Bias Classical", "Bias Alternative"))
+write.csv(merged_table.mc, "merged_table_varying_single_params_mc.csv")
+merged_table.mc
+
+
+# Print table
+merged_table.mc
+
+```
+
+
+# -----------------------------------------------------------------------------
+# SIMS 4: Outcome misclassification (b) ---------------------------------------
+# -----------------------------------------------------------------------------
+
+## 1) Vary several parameters
+
+Now, we will vary two to three parameters at a time, but with the addition of imperfect tests.
+
+### a. "vary_several_parameters_mc" function
+
+First, we modify the 'vary_several_parameters_mc' function to analyze mc.
+
+Note: 'parametros 1', 'parametros 2', and 'parametros 3' must all have the same length!
+
+```{r}
+
+#----------------------------------------------------------------------------
+#------------------------  vary_several_parameters_mc FUNCTION  -------------
+#----------------------------------------------------------------------------
+
+vary_several_parameters.mc <- function(
+    parametros_1 = NULL, # 1st set of parameters (e.g., "1,2,3,..." for OR HV)
+    parametros_2 = NULL, # 2nd set of parameters (e.g., "1,2,3,..." for OR HV)
+    argument_1 = NULL, # 1st argument to vary (e.g., "OR_HV =")
+    argument_2 = NULL, # 2nd argument to vary (e.g., "OR_HV =")
+    more_parameters = F, # Switch to include a third parameter or more
+    argument_3 = NULL, # 3rd argument to vary (e.g., "OR_HV =")    
+    parametros_3 = NULL, # 3rd set of parameters (e.g., "1,2,3,..." for OR HV)
+    nsims = 1000, # number of simulations per parameter
+    popsize = 1000000, # population size
+    seeds = NULL # df with seeds created in step 1
+    ) { # FUNCTION START
+
+
+  # 1) Create an empty df to store VE results ---------------------------------
+  
+  results = data.frame(matrix(ncol = 6, nrow = nsims)) # empty df
+  colnames(results) = c("iteration", # column names 
+                        "VE_Classical", 
+                        "SE_Classical",
+                        "VE_Alternative",
+                        "SE_Alternative",
+                        "Formula") # store the parameter changed as quality ctrl
+  
+  # 2) Create an empty list to store results for each iteration ---------------
+  
+  lista = list()  
+  
+  # 3) For loop 1: Iterate over j-th parameters in parametros sets -------------
+  
+  for (j in 1:length(parametros_1)){ # Start of "loop 1" 
+  
+  ## 3a) Pick the j-th parameter from the parametros sets, then, paste the ...
+  ### picked value to its argument (the parameter changed, e.g., "OR_HV"), ...
+  ### finally transform it into R object to be used as argument within datagen:
+    
+  parametro_1 = parametros_1[j]
+  formula_1 = paste(argument_1, parametro_1)
+
+  parametro_2 = parametros_2[j]
+  formula_2 = paste(argument_2, parametro_2)
+  
+  
+   if(more_parameters == T) { # If a third parameter will be used
+     
+     # Follow the same steps above for the 3rd parameter.
+     parametro_3 = parametros_3[j]
+     formula_3 = paste(argument_3, parametro_3)
+     
+     # Replace formula 2 with one that includes the third parameter
+     formula_2 = paste(formula_2, formula_3, sep = ", ")
+   
+   }
+  
+  # Merge formula 1 and formula 2 (the former may include or not formula 3)
+  formula = paste(formula_1, formula_2, sep = ", ")
+
+  ## 3b) Get VE and SE from n (n=nsims) simulations using the picked parameters:
+  
+  for (i in 1:nsims){ # Start of "loop 2". 
+  
+  ### i. generate data
+  df = 
+    eval(
+      parse(
+        text = paste(
+          "datagen(cf=F, mc=T, popsize=popsize, seed = seeds[i],", 
+          formula, 
+          ")" )))
+
+  ### ii. select study populations for both designs 
+  
+  df_classical = df %>% filter(T==1 & S==1)
+  df_alternative = df %>% filter(T==1)  
+         
+  
+  ### iii. get VE estimates and their SEs
+  
+  #### Classical TND
+  
+  fit.classical<-glm(I2_star~V+C,
+                       family = binomial, 
+                       data = df_classical) 
+  results.classical = summary(fit.classical)
+  
+  #### Alternative TND
+  
+  fit.alternative<-glm(I2_star~V+C,
+                         family = binomial, 
+                         data = df_alternative)
+  results.alternative = summary(fit.alternative)
+
+
+  ### iv. Save results
+  
+  #### Iteration number
+  results[i,1] = i
+  #### VE against S:I (log OR)
+  results[i,2] = results.classical$coefficients[2]
+  #### SE of VE against S:I 
+  results[i,3] = results.classical$coefficients[5]
+  #### VE against I  (log OR)
+  results[i,4] = results.alternative$coefficients[2]
+  #### SE of VE against I 
+  results[i,5] = results.alternative$coefficients[5]
+  #### Parameter
+  results[i,6] = formula 
+
+    } # End of "loop 2" 
+  
+  ### v. Store df of results in a list
+  
+  lista[[j]] = results
+  
+  } # End of "loop 1" ---------------------------------------------------------
+
+  
+  # 4) Return results ---------------------------------------------------------
+  
+    return(lista)
+  
+} # FUNCTION END
+
+
+
+```
+
+
+## 2) Run simulations
+
+We will vary the same three parameters above: 
+
+i) OR_HV   
+ii) OR_VT
+iii) I2_intercept
+
+Note: we do not need estimate new counterfactuals since we have them from sims 2. 
+
+### a) OR_HV - OR_VT
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_HV.OR_VT -----------------------------
+
+parametros_1 = parametros.OR_HV_v2
+argument_1 = "OR_HV =" 
+
+parametros_2 = parametros.OR_VT_v2 
+argument_2 = "OR_VT =" 
+
+lista_resultados.OR_HV.OR_VT.mc = 
+  vary_several_parameters.mc(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F, 
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### b) OR_HV - I2_Intercept
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_HV.I2_Intercept ----------------------
+
+parametros_1 = parametros.OR_HV_v2
+argument_1 = "OR_HV =" 
+
+parametros_2 = parametros.I2_Intercept_v2
+argument_2 = "I2_Intercept =" 
+
+lista_resultados.OR_HV.I2_Intercept.mc = 
+  vary_several_parameters.mc(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F, 
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### c) OR_VT - I2_Intercept
+
+
+```{r}
+
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_VT.I2_Intercept ----------------------
+
+parametros_1 = parametros.OR_VT_v2 
+argument_1 = "OR_VT =" 
+
+parametros_2 = parametros.I2_Intercept_v2
+argument_2 = "I2_Intercept =" 
+
+lista_resultados.OR_VT.I2_Intercept.mc = 
+  vary_several_parameters.mc(
+    parametros_1 = parametros_1,
+    parametros_2 = parametros_2, 
+    argument_1 = argument_1,
+    argument_2 = argument_2,
+    more_parameters = F, 
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+### d) OR_HV - OR_VT - I2_Intercept
+
+
+```{r}
+
+# Register starting time
+(A=Sys.time()) # to measure elapsed time
+
+## ---------- Step 1 - iterate over: OR_HV.OR_VT.I2_Intercept ---------------
+
+parametros_1 = parametros.OR_HV_v2
+argument_1 = "OR_HV =" 
+
+parametros_2 = parametros.OR_VT_v2 
+argument_2 = "OR_VT =" 
+
+parametros_3 = parametros.I2_Intercept_v2
+argument_3 = "I2_Intercept =" 
+
+
+lista_resultados.OR_HV.OR_VT.I2_Intercept.mc = 
+  vary_several_parameters.mc(
+    parametros_1 = parametros_1,
+    argument_1 = argument_1,
+    parametros_2 = parametros_2,
+    argument_2 = argument_2,
+    more_parameters = T,
+    parametros_3 = parametros_3,
+    argument_3 = argument_3,    
+    nsims = 1000,
+    popsize = 1000000, 
+    seeds = seeds) 
+
+
+ 
+B=Sys.time(); (B-A) 
+
+
+
+```
+
+
+## 3) Results: plots and tables
+
+### i. Compute bias
+
+
+First, we will utilize the function created above and calculate the bias for each group of parameters that were varied.
+
+
+```{r}
+
+
+# OR_HV.OR_VT -----------------------------------------------------------------
+
+tabla.resultados.OR_HV.OR_VT.mc =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_HV.OR_VT.mc, 
+  list_of_vectors = lista_Cf.OR_HV.OR_VT,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_HV_v2,
+  parametro_1 = "OR HV",
+  parametros_2 = parametros.OR_VT_v2,
+  parametro_2 = "OR VT", 
+  more_parameters = F)
+
+tabla.resultados.longer.OR_HV.OR_VT.mc = 
+  tabla.resultados.OR_HV.OR_VT.mc[[1]]
+tabla.resultados.wider.OR_HV.OR_VT.mc =
+  tabla.resultados.OR_HV.OR_VT.mc[[2]]
+
+
+# OR_HV.I2_Intercept ----------------------------------------------------------
+
+
+tabla.resultados.OR_HV.I2_Intercept.mc =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_HV.I2_Intercept.mc, 
+  list_of_vectors = lista_Cf.OR_HV.I2_Intercept,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_HV_v2,
+  parametro_1 = "OR HV",
+  parametros_2 = rev(round(prevalencias.I2[,1], 2)), # plots use prev instead param.
+  parametro_2 = "I2 Prevalence", 
+  more_parameters = F)
+
+tabla.resultados.longer.OR_HV.I2_Intercept.mc = 
+  tabla.resultados.OR_HV.I2_Intercept.mc[[1]]
+tabla.resultados.wider.OR_HV.I2_Intercept.mc =
+  tabla.resultados.OR_HV.I2_Intercept.mc[[2]]
+
+
+# OR_VT.I2_Intercept ----------------------------------------------------------
+
+
+tabla.resultados.OR_VT.I2_Intercept.mc =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_VT.I2_Intercept.mc, 
+  list_of_vectors = lista_Cf.OR_VT.I2_Intercept,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_VT_v2,
+  parametro_1 = "OR VT",
+  parametros_2 = rev(round(prevalencias.I2[,1], 2)),
+  parametro_2 = "I2 Prevalence", 
+  more_parameters = F)
+
+tabla.resultados.longer.OR_VT.I2_Intercept.mc = 
+  tabla.resultados.OR_VT.I2_Intercept.mc[[1]]
+tabla.resultados.wider.OR_VT.I2_Intercept.mc =
+  tabla.resultados.OR_VT.I2_Intercept.mc[[2]]
+
+# OR_HV.OR_VT.I2_Intercept ----------------------------------------------------
+
+
+tabla.resultados.OR_HV.OR_VT.I2_Intercept.mc =
+show_bias_tables(
+  list_of_dfs = lista_resultados.OR_HV.OR_VT.I2_Intercept.mc, 
+  list_of_vectors = lista_Cf.OR_HV.OR_VT.I2_Intercept,
+  compute_bias_function = compute_bias_OR,
+  parametros_1 = parametros.OR_HV_v2,
+  parametro_1 = "OR HV",
+  parametros_2 = parametros.OR_VT_v2,
+  parametro_2 = "OR VT",
+  more_parameters = T,
+  parametros_3 = rev(round(prevalencias.I2[,1], 2)),
+  parametro_3 = "I2 Prevalence")
+
+tabla.resultados.longer.OR_HV.OR_VT.I2_Intercept.mc = 
+  tabla.resultados.OR_HV.OR_VT.I2_Intercept.mc[[1]]
+tabla.resultados.wider.OR_HV.OR_VT.I2_Intercept.mc =
+  tabla.resultados.OR_HV.OR_VT.I2_Intercept.mc[[2]]
+
+
+```
+
+
+### ii. Plots: 2 varied parameters 
+
+#### a) Bias OR
+##### a.1) Individual plots 
+
+```{r}
+
+
+# OR_HV.OR_VT -------------------------------------------------------------
+
+plot.OR_HV.OR_VT.mc =
+two_params_plot(
+  table_results_long = tabla.resultados.longer.OR_HV.OR_VT.mc,
+  title = "Bias of the OR (exp(mean(measured log[OR])) - true RR) \n ",
+  x_axis_title = "OR HV",
+  x_axis = tabla.resultados.longer.OR_HV.OR_VT.mc$`OR HV`,
+  y_axis_title = "Bias",
+  y_axis = tabla.resultados.longer.OR_HV.OR_VT.mc$Bias,
+  color_title = "OR VT",
+  color = tabla.resultados.longer.OR_HV.OR_VT.mc$`OR VT`,
+  y_axis_by = 0.15, 
+  y_axis_min = -0.3, 
+  y_axis_max = 0.9)
+
+  
+
+# OR_HV.I2_Intercept -----------------------------------------------------
+
+plot.OR_HV.I2_Intercept.mc =
+two_params_plot(
+  table_results_long = tabla.resultados.longer.OR_HV.I2_Intercept.mc,
+  title = "",
+  x_axis_title = "OR HV",
+  x_axis = tabla.resultados.longer.OR_HV.I2_Intercept.mc$`OR HV`,
+  y_axis_title = "Bias",
+  y_axis = tabla.resultados.longer.OR_HV.I2_Intercept.mc$Bias,
+  color_title = "Baseline \nPrevalence\nof I2",
+  color = tabla.resultados.longer.OR_HV.I2_Intercept.mc$`I2 Prevalence`,
+  y_axis_by = 0.15,
+  y_axis_min = -0.3,
+  y_axis_max = 0.9)
+
+
+# OR_VT.I2_Intercept -----------------------------------------------------
+
+plot.OR_VT.I2_Intercept.mc =
+two_params_plot(
+  table_results_long = tabla.resultados.longer.OR_VT.I2_Intercept.mc,
+  title = "",
+  x_axis_title = "OR VT",
+  x_axis = tabla.resultados.longer.OR_VT.I2_Intercept.mc$`OR VT`,
+  y_axis_title = "Bias",
+  y_axis = tabla.resultados.longer.OR_VT.I2_Intercept.mc$Bias,
+  color_title = "Baseline \nPrevalence\nof I2",
+  color = tabla.resultados.longer.OR_VT.I2_Intercept.mc$`I2 Prevalence`,
+  y_axis_by = 0.15, 
+  y_axis_min = -0.3, 
+  y_axis_max = 0.9)
+
+
+```
+
+
+##### a.2) Merged plots 
+
+
+```{r}
+
+
+# save plots
+
+plot1 = plot.OR_HV.OR_VT.mc
+plot2 = plot.OR_HV.I2_Intercept.mc
+plot3 = plot.OR_VT.I2_Intercept.mc
+
+# Combine the plots into one plot with 3 rows and 2 columns and store it in a variable
+combined_plot <- arrangeGrob(plot1, plot2, plot3, 
+                             ncol = 1)
+
+# Save the combined plot as a JPEG
+ggsave("combined_plots_several_params_OR_mc.jpeg", 
+       combined_plot, width = 10, height = 10, dpi = 300)
+
+
+# Print plot
+combined_plot
+
+```
+
+
+### iii. Table
+
+Finally, we present all the aforementioned results in a table format.
+
+
+```{r}
+
+# Merge tables
+
+merged.table =
+  bind_rows(tabla.resultados.wider.OR_HV.OR_VT.mc, 
+          tabla.resultados.wider.OR_HV.I2_Intercept.mc,
+          tabla.resultados.wider.OR_VT.I2_Intercept.mc,
+          tabla.resultados.wider.OR_HV.OR_VT.I2_Intercept.mc)
+
+# Reorder the table
+
+merged.table = merged.table %>%
+  select(`OR HV`, `OR VT`, `I2 Prevalence`, everything())
+
+# Export the reordered table to a CSV file
+
+write.csv(merged.table, 
+          "several_varied_parameters_mc.csv", 
+          row.names = FALSE)
+
+# Print table
+merged.table
+
+
+
+```
+
+
