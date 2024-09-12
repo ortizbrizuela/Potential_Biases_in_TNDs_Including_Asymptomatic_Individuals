@@ -12,9 +12,10 @@ Ortiz-Brizuela, E., Carabali, M., Jiang, C., Merckx, J., Talbot, D., & Schnitzer
 The study investigates potential biases that can occur in test-negative design (TND) studies for evaluating COVID-19 vaccine effectiveness, particularly when asymptomatic individuals are included in the analysis. The simulations conducted aim to quantify these biases and offer insights on their implications for vaccine effectiveness estimation.
 
 ## Repository Contents
-	•	/code: Contains all the simulation scripts used for the study.
-	•	/data: Placeholder for any required input data files (if applicable).
-	•	/results: Directory for storing results from the simulation runs.
+
+- `0_Main_TND_Sims_R1_v2.Rmd:` R Markdown file containing all the code used in the simulation study.
+- `0_Main_TND_Sims_R1_v2.html:` A rendered version of the R Markdown file for easy viewing.
+- `0_sample_df_27Oct23.csv:` A simulated dataset generated using the code from the R Markdown file.
 
 ## Citation
 
