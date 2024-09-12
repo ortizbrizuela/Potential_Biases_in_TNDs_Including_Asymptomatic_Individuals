@@ -1,4 +1,4 @@
-# Code for TND Simulation Study (AJE, 2024; doi: 10.1093/aje/kwae288) 
+# Code for TND Simulation Study 
 
 ## Overview
 
